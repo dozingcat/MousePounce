@@ -51,12 +51,24 @@ class MyHomePage extends StatefulWidget {
   _MyHomePageState createState() => _MyHomePageState();
 }
 
-enum AnimationMode {none, play_card_back, play_card_front, pile_to_winner}
+enum AnimationMode {
+  none,
+  play_card_back,
+  play_card_front,
+  ai_slap,
+  waiting_to_move_pile,
+  pile_to_winner,
+}
+
+enum AIMode {human_vs_human, human_vs_ai, ai_vs_ai}
 
 class _MyHomePageState extends State<MyHomePage> {
   Game game = Game();
   AnimationMode animationMode = AnimationMode.none;
+  AIMode aiMode = AIMode.human_vs_ai;
   int pileMovingToPlayer;
+  int aiSlapPlayerIndex;
+  int aiSlapCounter = 0;
 
   void _playCard() {
     setState(() {
@@ -67,17 +79,58 @@ class _MyHomePageState extends State<MyHomePage> {
       // called again, and so nothing would appear to happen.
       game.playCard();
       animationMode = AnimationMode.play_card_back;
+      aiSlapCounter++;
+    });
+  }
 
-      if (game.saveChanceWinner != null) {
-        print("Winner: " + game.saveChanceWinner.toString());
-        Future.delayed(const Duration(milliseconds: 500), () {
+  bool _shouldAiPlayCard() {
+    return aiMode == AIMode.ai_vs_ai ||
+        (aiMode == AIMode.human_vs_ai && game.currentPlayerIndex == 1);
+  }
+
+  void _scheduleAiPlayIfNeeded() {
+    if (_shouldAiPlayCard()) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _playCard();
+      });
+    }
+  }
+
+  void _playCardFinished() {
+    animationMode = AnimationMode.none;
+    if (game.canSlapPile()) {
+      final delayMillis = 1000;
+      aiSlapCounter++;
+      final counterSnapshot = aiSlapCounter;
+      Future.delayed(Duration(milliseconds: delayMillis), () {
+        if (counterSnapshot == aiSlapCounter) {
           setState(() {
-            pileMovingToPlayer = game.saveChanceWinner;
+            animationMode = AnimationMode.ai_slap;
+            pileMovingToPlayer = 1;
+            Future.delayed(Duration(milliseconds: 1000), () {
+              setState(() {
+                animationMode = AnimationMode.pile_to_winner;
+              });
+            });
+          });
+        }
+      });
+    }
+    else {
+      final pileWinner = game.saveChanceWinner;
+      if (pileWinner != null) {
+        animationMode = AnimationMode.waiting_to_move_pile;
+        pileMovingToPlayer = pileWinner;
+        Future.delayed(const Duration(milliseconds: 1000), () {
+          setState(() {
             animationMode = AnimationMode.pile_to_winner;
           });
         });
       }
-    });
+      else {
+        _scheduleAiPlayIfNeeded();
+      }
+    }
   }
 
   void _movePileToWinner() {
@@ -93,6 +146,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
     animationMode = AnimationMode.none;
     pileMovingToPlayer = null;
+    _scheduleAiPlayIfNeeded();
   }
 
   void _playCardIfPlayerTurn(int pnum) {
@@ -114,6 +168,7 @@ class _MyHomePageState extends State<MyHomePage> {
     print('Tap: ${globalOffset.dy} ${globalHeight} ${pnum}');
     if (game.canSlapPile()) {
       setState(() {
+        aiSlapCounter++;
         pileMovingToPlayer = pnum;
         animationMode = AnimationMode.pile_to_winner;
       });
@@ -150,7 +205,7 @@ class _MyHomePageState extends State<MyHomePage> {
     final maxOffset = minDim * 0.1;
     return Container(
         height: double.infinity,
-        // width: double.infinity,
+        width: double.infinity,
         child: Transform.translate(
             offset: Offset(pc.xOffset * maxOffset, pc.yOffset * maxOffset),
             child:
@@ -172,26 +227,37 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  List<Widget> _pileCardWidgets(Iterable<PileCard> pileCards, final Size displaySize) {
+    return pileCards.map((pc) => _pileCardWidget(pc, displaySize)).toList();
+  }
+
   Widget _pileContent(final Game game, final Size displaySize) {
     final pileCardsWithoutLast = game.pileCards.sublist(0, max(0, game.pileCards.length - 1));
     final lastPileCard = game.pileCards.isNotEmpty ? game.pileCards.last : null;
     switch (animationMode) {
 
       case AnimationMode.none:
-        return Stack(
-            children: game.pileCards.map((pc) => _pileCardWidget(pc, displaySize)).toList());
+      case AnimationMode.waiting_to_move_pile:
+        return Stack(children: _pileCardWidgets(game.pileCards, displaySize));
+
+      case AnimationMode.ai_slap:
+        return Stack(children: [
+          ..._pileCardWidgets(game.pileCards, displaySize),
+          Image(
+              image: AssetImage('assets/cats/paw1.png'),
+              alignment: Alignment.center,
+          ),
+        ]);
 
       case AnimationMode.play_card_back:
         return Stack(
               children: [
-                ...pileCardsWithoutLast.map((pc) => _pileCardWidget(pc, displaySize)).toList(),
+                ..._pileCardWidgets(pileCardsWithoutLast, displaySize).toList(),
               if (lastPileCard != null) TweenAnimationBuilder(
                 tween: Tween(begin: 0.0, end: 1.0),
                 duration: Duration(milliseconds: 200),
                 onEnd: () {
-                  setState(() {
-                    animationMode = AnimationMode.none;
-                  });
+                  setState(_playCardFinished);
                 },
                 child: _pileCardWidget(lastPileCard, displaySize),
                 builder: (BuildContext context, double animValue, Widget child) {
@@ -213,8 +279,7 @@ class _MyHomePageState extends State<MyHomePage> {
           onEnd: () {
             setState(_movePileToWinner);
           },
-          child: Stack(children:
-              game.pileCards.map((pc) => _pileCardWidget(pc, displaySize)).toList()),
+          child: Stack(children: _pileCardWidgets(game.pileCards, displaySize)),
           builder: (BuildContext context, double animValue, Widget child) {
             return Transform.translate(
               offset: Offset(0, endYOff * animValue),
@@ -239,15 +304,34 @@ class _MyHomePageState extends State<MyHomePage> {
     // than having to individually change instances of widgets.
     final displaySize = MediaQuery.of(context).size;
     return Scaffold(
+      backgroundColor: Color.fromARGB(255, 0, 128, 0),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            _playerStatusWidget(game, 1, displaySize),
-          Expanded(
-            child: _pileContent(game, displaySize)
-          ),
-            _playerStatusWidget(game, 0, displaySize),
+            // _playerStatusWidget(game, 1, displaySize),
+            Container(
+              color: Colors.white70,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [Transform.translate(offset: Offset(0, 10), child: Image(
+                  image: AssetImage('assets/cats/cat1.png'),
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.center,
+                )),
+            ])),
+            Expanded(
+              child:
+                Container(
+                  child: _pileContent(game, displaySize),
+                ),
+            ),
+            Container(
+              color: Colors.white70,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [_playerStatusWidget(game, 0, displaySize)],
+            )),
           ],
         ),
       ),
