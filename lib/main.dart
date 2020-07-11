@@ -85,7 +85,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   List<int> _randomCatImageNumbers() {
     int c1 = rng.nextInt(numCatImages);
-    int c2 = (c1 + rng.nextInt(numCatImages - 1)) % numCatImages;
+    int c2 = (c1 + 1 + rng.nextInt(numCatImages - 1)) % numCatImages;
     return [c1 + 1, c2 + 1];
   }
 
@@ -120,7 +120,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _playCardFinished() {
     animationMode = AnimationMode.none;
-    if (game.canSlapPile()) {
+    if (game.canSlapPile() && aiMode != AIMode.human_vs_human) {
       final delayMillis = 1000;
       aiSlapCounter++;
       final counterSnapshot = aiSlapCounter;
@@ -201,19 +201,21 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget _playerStatusWidget(final Game game, final int playerIndex, final Size displaySize) {
-    return GestureDetector(
-        onTap: () {_playCardIfPlayerTurn(playerIndex);},
+    final enabled = game.currentPlayerIndex == playerIndex;
+    return Transform.rotate(
+      angle: (playerIndex == 1) ? pi : 0,
         child: Padding(
           padding: EdgeInsets.all(0.025 * displaySize.height),
-          child: Text (
-              'Cards: ${game.playerCards[playerIndex].length}',
+          child: RaisedButton(
+            onPressed: enabled ? (() {_playCardIfPlayerTurn(playerIndex);}) : null,
+          child: Padding(padding: EdgeInsets.all(10), child: Text (
+              'Play card: ${game.playerCards[playerIndex].length} left',
               style: TextStyle(
                 fontSize: Theme.of(context).textTheme.headline4.fontSize,
-                color: game.currentPlayerIndex == playerIndex ? Colors.green : Colors.grey,
+                color: enabled ? Colors.green : Colors.grey,
               )
-          ),
-        )
-    );
+          )),
+        )));
   }
 
   Widget _aiPlayerWidget(final Game game, final int playerIndex, final Size displaySize) {
@@ -281,10 +283,10 @@ class _MyHomePageState extends State<MyHomePage> {
       case AnimationMode.ai_slap:
         return Stack(children: [
           ..._pileCardWidgets(game.pileCards, displaySize),
-          Image(
+          Center(child: Image(
               image: AssetImage('assets/cats/paw${catImageNumbers[aiSlapPlayerIndex]}.png'),
               alignment: Alignment.center,
-          ),
+          )),
         ]);
 
       case AnimationMode.play_card_back:
@@ -358,6 +360,17 @@ class _MyHomePageState extends State<MyHomePage> {
                   child: Row(
                     children: [Expanded(
                       child: RaisedButton(
+                        onPressed: _startTwoPlayerGame,
+                        child: Text('Play against human'),
+                      ),
+                    )],
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.all(10),
+                  child: Row(
+                    children: [Expanded(
+                      child: RaisedButton(
                         onPressed: _watchAiGame,
                         child: Text('Watch the cats'),
                       ),
@@ -376,6 +389,15 @@ class _MyHomePageState extends State<MyHomePage> {
       aiMode = AIMode.human_vs_ai;
       dialogMode = DialogMode.none;
       catImageNumbers = _randomCatImageNumbers();
+      game = Game.withRng(rng);
+      game.startGame();
+    });
+  }
+
+  void _startTwoPlayerGame() {
+    setState(() {
+      aiMode = AIMode.human_vs_human;
+      dialogMode = DialogMode.none;
       game = Game.withRng(rng);
       game.startGame();
     });
@@ -434,8 +456,13 @@ class _MyHomePageState extends State<MyHomePage> {
                   color: Colors.white70,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: [_aiPlayerWidget(game, 1, displaySize),
-                ])),
+                    children: [
+                      aiMode == AIMode.human_vs_human ?
+                      _playerStatusWidget(game, 1, displaySize) :
+                      _aiPlayerWidget(game, 1, displaySize),
+                    ],
+                  ),
+                ),
                 Expanded(
                   child:
                     Container(
