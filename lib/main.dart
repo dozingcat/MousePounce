@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'game.dart';
@@ -62,13 +63,31 @@ enum AnimationMode {
 
 enum AIMode {human_vs_human, human_vs_ai, ai_vs_ai}
 
+enum DialogMode {none, main_menu, preferences, game_paused, game_over, statistics}
+
 class _MyHomePageState extends State<MyHomePage> {
+  Random rng = Random();
   Game game = Game();
   AnimationMode animationMode = AnimationMode.none;
-  AIMode aiMode = AIMode.human_vs_ai;
+  AIMode aiMode = AIMode.ai_vs_ai;
+  DialogMode dialogMode = DialogMode.main_menu;
   int pileMovingToPlayer;
   int aiSlapPlayerIndex;
   int aiSlapCounter = 0;
+  List<int> catImageNumbers;
+  final numCatImages = 4;
+
+  _MyHomePageState() {
+    game = Game.withRng(rng);
+    catImageNumbers = _randomCatImageNumbers();
+    _scheduleAiPlayIfNeeded();
+  }
+
+  List<int> _randomCatImageNumbers() {
+    int c1 = rng.nextInt(numCatImages);
+    int c2 = (c1 + rng.nextInt(numCatImages - 1)) % numCatImages;
+    return [c1 + 1, c2 + 1];
+  }
 
   void _playCard() {
     setState(() {
@@ -89,9 +108,12 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _scheduleAiPlayIfNeeded() {
+    final thisGame = game;
     if (_shouldAiPlayCard()) {
       Future.delayed(const Duration(milliseconds: 500), () {
-        _playCard();
+        if (thisGame == game && _shouldAiPlayCard()) {
+          _playCard();
+        }
       });
     }
   }
@@ -102,11 +124,13 @@ class _MyHomePageState extends State<MyHomePage> {
       final delayMillis = 1000;
       aiSlapCounter++;
       final counterSnapshot = aiSlapCounter;
+      final aiIndex = aiMode == AIMode.human_vs_ai ? 1 : rng.nextInt(2);
       Future.delayed(Duration(milliseconds: delayMillis), () {
         if (counterSnapshot == aiSlapCounter) {
           setState(() {
             animationMode = AnimationMode.ai_slap;
-            pileMovingToPlayer = 1;
+            pileMovingToPlayer = aiIndex;
+            aiSlapPlayerIndex = aiIndex;
             Future.delayed(Duration(milliseconds: 1000), () {
               setState(() {
                 animationMode = AnimationMode.pile_to_winner;
@@ -140,6 +164,7 @@ class _MyHomePageState extends State<MyHomePage> {
       print("Player ${winner} wins!");
       Future.delayed(const Duration(milliseconds: 2000), () {
         setState(() {
+          _scheduleAiPlayIfNeeded();
           game.startGame();
         });
       });
@@ -180,7 +205,6 @@ class _MyHomePageState extends State<MyHomePage> {
         onTap: () {_playCardIfPlayerTurn(playerIndex);},
         child: Padding(
           padding: EdgeInsets.all(0.025 * displaySize.height),
-
           child: Text (
               'Cards: ${game.playerCards[playerIndex].length}',
               style: TextStyle(
@@ -189,6 +213,20 @@ class _MyHomePageState extends State<MyHomePage> {
               )
           ),
         )
+    );
+  }
+
+  Widget _aiPlayerWidget(final Game game, final int playerIndex, final Size displaySize) {
+    return Transform.rotate(
+      angle: playerIndex == 1 ? 0 : pi,
+      child: Transform.translate(
+        offset: Offset(0, 10),
+        child: Image(
+          image: AssetImage('assets/cats/cat${catImageNumbers[playerIndex]}.png'),
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.center,
+        ),
+      ),
     );
   }
 
@@ -213,8 +251,8 @@ class _MyHomePageState extends State<MyHomePage> {
               angle: pc.rotation * pi / 12,
               child: FractionallySizedBox(
                 alignment: Alignment.center,
-                heightFactor: 0.75,
-                widthFactor: 0.75,
+                heightFactor: 0.7,
+                widthFactor: 0.7,
                 child: GestureDetector(
                     onTapDown: (TapDownDetails tap) {
                       _doSlap(tap.globalPosition, displaySize.height);
@@ -244,7 +282,7 @@ class _MyHomePageState extends State<MyHomePage> {
         return Stack(children: [
           ..._pileCardWidgets(game.pileCards, displaySize),
           Image(
-              image: AssetImage('assets/cats/paw1.png'),
+              image: AssetImage('assets/cats/paw${catImageNumbers[aiSlapPlayerIndex]}.png'),
               alignment: Alignment.center,
           ),
         ]);
@@ -293,6 +331,86 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  Widget _mainMenuDialog(Size displaySize) {
+    return Container(
+        width: double.infinity,
+        height: double.infinity,
+        child: Center(
+          child: Dialog(
+            backgroundColor: Color.fromARGB(0xa0, 0xc0, 0xc0, 0xc0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(padding: EdgeInsets.all(10), child: Text('Egyptian Mouse Pounce')),
+                Padding(
+                  padding: EdgeInsets.all(10),
+                  child: Row(
+                    children: [Expanded(
+                      child: RaisedButton(
+                        onPressed: _startOnePlayerGame,
+                        child: Text('Play against computer'),
+                      ),
+                    )],
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.all(10),
+                  child: Row(
+                    children: [Expanded(
+                      child: RaisedButton(
+                        onPressed: _watchAiGame,
+                        child: Text('Watch the cats'),
+                      ),
+                    )],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+  }
+
+  void _startOnePlayerGame() {
+    setState(() {
+      aiMode = AIMode.human_vs_ai;
+      dialogMode = DialogMode.none;
+      catImageNumbers = _randomCatImageNumbers();
+      game = Game.withRng(rng);
+      game.startGame();
+    });
+  }
+
+  void _watchAiGame() {
+    setState(() {
+      dialogMode = DialogMode.none;
+      if (aiMode != AIMode.ai_vs_ai) {
+        aiMode = AIMode.ai_vs_ai;
+        game = Game.withRng(rng);
+        _scheduleAiPlayIfNeeded();
+      }
+    });
+  }
+
+  Widget _menuIcon() {
+    return Padding(
+      padding: EdgeInsets.all(10),
+      child: FloatingActionButton(
+        onPressed: _showMenu,
+        child: Icon(Icons.menu),
+      ),
+    );
+  }
+
+  void _showMenu() {
+    setState(() {
+      switch (aiMode) {
+        default:
+          dialogMode = DialogMode.main_menu;
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     print(animationMode);
@@ -306,32 +424,38 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       backgroundColor: Color.fromARGB(255, 0, 128, 0),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            // _playerStatusWidget(game, 1, displaySize),
-            Container(
-              color: Colors.white70,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [Transform.translate(offset: Offset(0, 10), child: Image(
-                  image: AssetImage('assets/cats/cat1.png'),
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.center,
-                )),
-            ])),
-            Expanded(
-              child:
+        child: Stack(
+          children: [
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                // _playerStatusWidget(game, 1, displaySize),
                 Container(
-                  child: _pileContent(game, displaySize),
+                  color: Colors.white70,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [_aiPlayerWidget(game, 1, displaySize),
+                ])),
+                Expanded(
+                  child:
+                    Container(
+                      child: _pileContent(game, displaySize),
+                    ),
                 ),
+                Container(
+                  color: Colors.white70,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      aiMode == AIMode.ai_vs_ai ?
+                        _aiPlayerWidget(game, 0, displaySize) :
+                        _playerStatusWidget(game, 0, displaySize),
+                    ],
+                )),
+              ],
             ),
-            Container(
-              color: Colors.white70,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [_playerStatusWidget(game, 0, displaySize)],
-            )),
+            if (dialogMode == DialogMode.main_menu) _mainMenuDialog(displaySize),
+            if (dialogMode == DialogMode.none) _menuIcon(),
           ],
         ),
       ),

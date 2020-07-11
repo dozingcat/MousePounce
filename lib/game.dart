@@ -81,6 +81,11 @@ class Game {
     startGame();
   }
 
+  Game.withRng(Random rng) {
+    this.rng = rng;
+    startGame();
+  }
+
   void startGame() {
     var allCards = [...standardDeckCards];
     allCards.shuffle(this.rng);
@@ -108,7 +113,8 @@ class Game {
   }
 
   bool _isStopper(final PlayingCard card) {
-    return card.rank.index >= Rank.ten.index;
+    // TODO: Check for 10 being a stopper.
+    return card.rank.index >= Rank.jack.index;
   }
 
   void _moveToNextPlayer() {
