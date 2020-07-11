@@ -189,7 +189,10 @@ class _MyHomePageState extends State<MyHomePage> {
     if (animationMode != AnimationMode.none) {
       return;
     }
-    final pnum = (globalOffset.dy > globalHeight / 2) ? 0 : 1;
+    int pnum = 0;
+    if (aiMode == AIMode.human_vs_human) {
+      pnum = (globalOffset.dy > globalHeight / 2) ? 0 : 1;
+    }
     print('Tap: ${globalOffset.dy} ${globalHeight} ${pnum}');
     if (game.canSlapPile()) {
       setState(() {
@@ -333,7 +336,11 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  Widget _mainMenuDialog(Size displaySize) {
+  Widget _paddingAll(final double paddingPx, final Widget child) {
+    return Padding(padding: EdgeInsets.all(paddingPx), child: child);
+  }
+
+  Widget _mainMenuDialog(final Size displaySize) {
     return Container(
         width: double.infinity,
         height: double.infinity,
@@ -343,40 +350,36 @@ class _MyHomePageState extends State<MyHomePage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Padding(padding: EdgeInsets.all(10), child: Text('Egyptian Mouse Pounce')),
-                Padding(
-                  padding: EdgeInsets.all(10),
-                  child: Row(
-                    children: [Expanded(
-                      child: RaisedButton(
-                        onPressed: _startOnePlayerGame,
-                        child: Text('Play against computer'),
-                      ),
-                    )],
-                  ),
-                ),
-                Padding(
-                  padding: EdgeInsets.all(10),
-                  child: Row(
-                    children: [Expanded(
-                      child: RaisedButton(
-                        onPressed: _startTwoPlayerGame,
-                        child: Text('Play against human'),
-                      ),
-                    )],
-                  ),
-                ),
-                Padding(
-                  padding: EdgeInsets.all(10),
-                  child: Row(
-                    children: [Expanded(
-                      child: RaisedButton(
-                        onPressed: _watchAiGame,
-                        child: Text('Watch the cats'),
-                      ),
-                    )],
-                  ),
-                ),
+                _paddingAll(10, Text(
+                    'Egyptian Mouse Pounce',
+                    style: TextStyle(
+                      fontSize: displaySize.width / 20,
+                    )
+                )),
+                _paddingAll(10, Row(
+                  children: [Expanded(
+                    child: RaisedButton(
+                      onPressed: _startOnePlayerGame,
+                      child: Text('Play against computer'),
+                    ),
+                  )],
+                )),
+                _paddingAll(10, Row(
+                  children: [Expanded(
+                    child: RaisedButton(
+                      onPressed: _startTwoPlayerGame,
+                      child: Text('Play against human'),
+                    ),
+                  )],
+                )),
+                _paddingAll(10, Row(
+                  children: [Expanded(
+                    child: RaisedButton(
+                      onPressed: _watchAiGame,
+                      child: Text('Watch the cats'),
+                    ),
+                  )],
+                )),
               ],
             ),
           ),
@@ -384,13 +387,46 @@ class _MyHomePageState extends State<MyHomePage> {
       );
   }
 
+  Widget _pausedMenuDialog(final Size displaySize) {
+    return Container(
+        width: double.infinity,
+        height: double.infinity,
+        child: Center(
+          child: Dialog(
+          backgroundColor: Color.fromARGB(0xa0, 0xc0, 0xc0, 0xc0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _paddingAll(10, Row(
+                children: [Expanded(
+                  child: RaisedButton(
+                    onPressed: _continueGame,
+                    child: Text('Continue'),
+                  ),
+                )],
+              )),
+              _paddingAll(10, Row(
+                children: [Expanded(
+                  child: RaisedButton(
+                    onPressed: _endGame,
+                    child: Text('End Game'),
+                  ),
+                )],
+              )),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _startOnePlayerGame() {
     setState(() {
       aiMode = AIMode.human_vs_ai;
       dialogMode = DialogMode.none;
+      animationMode = AnimationMode.none;
       catImageNumbers = _randomCatImageNumbers();
       game = Game.withRng(rng);
-      game.startGame();
     });
   }
 
@@ -398,8 +434,24 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       aiMode = AIMode.human_vs_human;
       dialogMode = DialogMode.none;
+      animationMode = AnimationMode.none;
       game = Game.withRng(rng);
-      game.startGame();
+    });
+  }
+
+  void _continueGame() {
+    setState(() {
+      dialogMode = DialogMode.none;
+    });
+  }
+
+  void _endGame() {
+    setState(() {
+      dialogMode = DialogMode.main_menu;
+      aiMode = AIMode.ai_vs_ai;
+      animationMode = AnimationMode.none;
+      game = Game.withRng(rng);
+      _scheduleAiPlayIfNeeded();
     });
   }
 
@@ -419,7 +471,7 @@ class _MyHomePageState extends State<MyHomePage> {
       padding: EdgeInsets.all(10),
       child: FloatingActionButton(
         onPressed: _showMenu,
-        child: Icon(Icons.menu),
+        child: Icon(aiMode == AIMode.ai_vs_ai ? Icons.menu : Icons.pause),
       ),
     );
   }
@@ -427,15 +479,19 @@ class _MyHomePageState extends State<MyHomePage> {
   void _showMenu() {
     setState(() {
       switch (aiMode) {
-        default:
+        case AIMode.ai_vs_ai:
           dialogMode = DialogMode.main_menu;
+          break;
+        default:
+          dialogMode = DialogMode.game_paused;
+          break;
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    print(animationMode);
+    // print(animationMode);
     // This method is rerun every time setState is called, for instance as done
     // by the _incrementCounter method above.
     //
@@ -482,6 +538,8 @@ class _MyHomePageState extends State<MyHomePage> {
               ],
             ),
             if (dialogMode == DialogMode.main_menu) _mainMenuDialog(displaySize),
+            if (dialogMode == DialogMode.game_paused)
+              _pausedMenuDialog(displaySize),
             if (dialogMode == DialogMode.none) _menuIcon(),
           ],
         ),
