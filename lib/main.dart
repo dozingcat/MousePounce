@@ -103,6 +103,9 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   bool _shouldAiPlayCard() {
+    if (game.gameWinner() != null) {
+      return false;
+    }
     return aiMode == AIMode.ai_vs_ai ||
         (aiMode == AIMode.human_vs_ai && game.currentPlayerIndex == 1);
   }
@@ -118,10 +121,14 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  int _aiSlapDelayMillis() {
+    return 300 + (500 * rng.nextDouble()).toInt();
+  }
+
   void _playCardFinished() {
     animationMode = AnimationMode.none;
     if (game.canSlapPile() && aiMode != AIMode.human_vs_human) {
-      final delayMillis = 1000;
+      final delayMillis = _aiSlapDelayMillis();
       aiSlapCounter++;
       final counterSnapshot = aiSlapCounter;
       final aiIndex = aiMode == AIMode.human_vs_ai ? 1 : rng.nextInt(2);
@@ -162,12 +169,17 @@ class _MyHomePageState extends State<MyHomePage> {
     int winner = game.gameWinner();
     if (winner != null) {
       print("Player ${winner} wins!");
-      Future.delayed(const Duration(milliseconds: 2000), () {
-        setState(() {
-          _scheduleAiPlayIfNeeded();
-          game.startGame();
+      if (aiMode == AIMode.ai_vs_ai) {
+        Future.delayed(const Duration(milliseconds: 2000), () {
+          setState(() {
+            game.startGame();
+            _scheduleAiPlayIfNeeded();
+          });
         });
-      });
+      }
+      else {
+        dialogMode = DialogMode.game_over;
+      }
     }
     animationMode = AnimationMode.none;
     pileMovingToPlayer = null;
@@ -420,6 +432,52 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  Widget _gameOverDialog(final Size displaySize) {
+    final winner = game.gameWinner();
+    if (winner == null) {
+      return Container();
+    }
+    String title = (aiMode == AIMode.human_vs_ai) ?
+        (winner == 0 ? 'You won!' : 'You lost!') :
+        'Player ${winner + 1} won!';
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      child: Center(
+        child: Dialog(
+          backgroundColor: Color.fromARGB(0xa0, 0xc0, 0xc0, 0xc0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _paddingAll(10, Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: displaySize.width / 20,
+                  )
+              )),
+              _paddingAll(10, Row(
+                children: [Expanded(
+                  child: RaisedButton(
+                    onPressed: _startNewGame,
+                    child: Text('Rematch'),
+                  ),
+                )],
+              )),
+              _paddingAll(10, Row(
+                children: [Expanded(
+                  child: RaisedButton(
+                    onPressed: _endGame,
+                    child: Text('Main menu'),
+                  ),
+                )],
+              )),
+            ],
+          )
+        )
+      )
+    );
+  }
+
   void _startOnePlayerGame() {
     setState(() {
       aiMode = AIMode.human_vs_ai;
@@ -433,6 +491,14 @@ class _MyHomePageState extends State<MyHomePage> {
   void _startTwoPlayerGame() {
     setState(() {
       aiMode = AIMode.human_vs_human;
+      dialogMode = DialogMode.none;
+      animationMode = AnimationMode.none;
+      game = Game.withRng(rng);
+    });
+  }
+
+  void _startNewGame() {
+    setState(() {
       dialogMode = DialogMode.none;
       animationMode = AnimationMode.none;
       game = Game.withRng(rng);
@@ -540,6 +606,7 @@ class _MyHomePageState extends State<MyHomePage> {
             if (dialogMode == DialogMode.main_menu) _mainMenuDialog(displaySize),
             if (dialogMode == DialogMode.game_paused)
               _pausedMenuDialog(displaySize),
+            if (dialogMode == DialogMode.game_over) _gameOverDialog(displaySize),
             if (dialogMode == DialogMode.none) _menuIcon(),
           ],
         ),
