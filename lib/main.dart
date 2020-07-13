@@ -78,7 +78,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final numCatImages = 4;
 
   _MyHomePageState() {
-    game = Game.withRng(rng);
+    game = Game(rng: rng);
     catImageNumbers = _randomCatImageNumbers();
     _scheduleAiPlayIfNeeded();
   }
@@ -148,7 +148,7 @@ class _MyHomePageState extends State<MyHomePage> {
       });
     }
     else {
-      final pileWinner = game.saveChanceWinner;
+      final pileWinner = game.challengeChanceWinner;
       if (pileWinner != null) {
         animationMode = AnimationMode.waiting_to_move_pile;
         pileMovingToPlayer = pileWinner;
@@ -387,6 +387,14 @@ class _MyHomePageState extends State<MyHomePage> {
                 _paddingAll(10, Row(
                   children: [Expanded(
                     child: RaisedButton(
+                      onPressed: _showPreferences,
+                      child: Text('Preferences'),
+                    ),
+                  )],
+                )),
+                _paddingAll(10, Row(
+                  children: [Expanded(
+                    child: RaisedButton(
                       onPressed: _watchAiGame,
                       child: Text('Watch the cats'),
                     ),
@@ -484,7 +492,7 @@ class _MyHomePageState extends State<MyHomePage> {
       dialogMode = DialogMode.none;
       animationMode = AnimationMode.none;
       catImageNumbers = _randomCatImageNumbers();
-      game = Game.withRng(rng);
+      game.startGame();
     });
   }
 
@@ -493,7 +501,7 @@ class _MyHomePageState extends State<MyHomePage> {
       aiMode = AIMode.human_vs_human;
       dialogMode = DialogMode.none;
       animationMode = AnimationMode.none;
-      game = Game.withRng(rng);
+      game.startGame();
     });
   }
 
@@ -501,7 +509,7 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       dialogMode = DialogMode.none;
       animationMode = AnimationMode.none;
-      game = Game.withRng(rng);
+      game.startGame();
     });
   }
 
@@ -516,8 +524,20 @@ class _MyHomePageState extends State<MyHomePage> {
       dialogMode = DialogMode.main_menu;
       aiMode = AIMode.ai_vs_ai;
       animationMode = AnimationMode.none;
-      game = Game.withRng(rng);
+      game.startGame();
       _scheduleAiPlayIfNeeded();
+    });
+  }
+
+  void _showPreferences() {
+    setState(() {
+      dialogMode = DialogMode.preferences;
+    });
+  }
+
+  void _closePreferences() {
+    setState(() {
+      dialogMode = (aiMode == AIMode.ai_vs_ai ? DialogMode.main_menu : DialogMode.none);
     });
   }
 
@@ -526,7 +546,7 @@ class _MyHomePageState extends State<MyHomePage> {
       dialogMode = DialogMode.none;
       if (aiMode != AIMode.ai_vs_ai) {
         aiMode = AIMode.ai_vs_ai;
-        game = Game.withRng(rng);
+        game.startGame();
         _scheduleAiPlayIfNeeded();
       }
     });
@@ -553,6 +573,69 @@ class _MyHomePageState extends State<MyHomePage> {
           break;
       }
     });
+  }
+
+  Widget _preferencesDialog(final Size displaySize) {
+    final makeCheckboxRow = (String title, Function(bool) setter, bool Function() getter) {
+      return TableRow(children: [
+        Text(title),
+        Checkbox(
+          onChanged: (bool checked) {setState(() {setter(checked);});},
+          value: getter(),
+        )
+      ]);
+    };
+
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      child: Center(
+        child: Dialog(
+          backgroundColor: Color.fromARGB(0xc0, 0xc0, 0xc0, 0xc0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _paddingAll(10, Text(
+                'Preferences',
+                style: TextStyle(
+                  fontSize: displaySize.width / 20,
+                )
+              )),
+              Table(
+                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                defaultColumnWidth: const IntrinsicColumnWidth(),
+                children: [
+                  makeCheckboxRow('Tens are stoppers',
+                          (bool checked) {game.rules.tenIsStopper = checked;},
+                          () {return game.rules.tenIsStopper;}
+                  ),
+                  makeCheckboxRow('Slap on sandwiches',
+                          (bool checked) {game.rules.slapOnSandwich = checked;},
+                          () {return game.rules.slapOnSandwich;}
+                  ),
+                  makeCheckboxRow('Slap on run of 3',
+                          (bool checked) {game.rules.slapOnRunOf3 = checked;},
+                          () {return game.rules.slapOnRunOf3;}
+                  ),
+                  makeCheckboxRow('Slap on 4 of same suit',
+                          (bool checked) {game.rules.slapOnSameSuitOf4 = checked;},
+                          () {return game.rules.slapOnSameSuitOf4;}
+                  ),
+                ],
+              ),
+              _paddingAll(10, Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [RaisedButton(
+                    onPressed: _closePreferences,
+                    child: Text('OK'),
+                  ),
+                ],
+              )),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -607,6 +690,7 @@ class _MyHomePageState extends State<MyHomePage> {
             if (dialogMode == DialogMode.game_paused)
               _pausedMenuDialog(displaySize),
             if (dialogMode == DialogMode.game_over) _gameOverDialog(displaySize),
+            if (dialogMode == DialogMode.preferences) _preferencesDialog(displaySize),
             if (dialogMode == DialogMode.none) _menuIcon(),
           ],
         ),

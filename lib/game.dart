@@ -62,27 +62,26 @@ class PileCard {
       rotation = 2 * rng.nextDouble() - 1;
 }
 
+class GameRules {
+  bool tenIsStopper = false;
+  bool slapOnSandwich = false;
+  bool slapOnRunOf3 = false;
+  bool slapOnSameSuitOf4 = false;
+}
+
 class Game {
+  GameRules rules;
   Random rng;
   List<List<PlayingCard>> playerCards;
   List<PileCard> pileCards;
   int currentPlayerIndex;
-  int numSaveChances;
-  int saveChanceOwner;
-  int saveChanceWinner;
+  int numChallengeChances;
+  int challengeChanceOwner;
+  int challengeChanceWinner;
 
-  Game() {
-    this.rng = Random();
-    startGame();
-  }
-
-  Game.withSeed(int seed) {
-    this.rng = Random(seed);
-    startGame();
-  }
-
-  Game.withRng(Random rng) {
-    this.rng = rng;
+  Game({Random rng, GameRules rules}) {
+    this.rng = rng ?? Random();
+    this.rules = rules ?? GameRules();
     startGame();
   }
 
@@ -93,16 +92,16 @@ class Game {
     playerCards = [allCards.sublist(0, midpoint), allCards.sublist(midpoint)];
     pileCards = [];
     currentPlayerIndex = 0;
-    numSaveChances = null;
-    saveChanceOwner = null;
-    saveChanceWinner = null;
+    numChallengeChances = null;
+    challengeChanceOwner = null;
+    challengeChanceWinner = null;
   }
 
   int get numPlayers {
     return playerCards.length;
   }
 
-  int _saveChancesForCard(final PlayingCard card) {
+  int _challengeChancesForCard(final PlayingCard card) {
     switch (card.rank) {
       case Rank.ace: return 4;
       case Rank.king : return 3;
@@ -113,7 +112,9 @@ class Game {
   }
 
   bool _isStopper(final PlayingCard card) {
-    // TODO: Check for 10 being a stopper.
+    if (rules.tenIsStopper && card.rank == Rank.ten) {
+      return true;
+    }
     return card.rank.index >= Rank.jack.index;
   }
 
@@ -127,31 +128,31 @@ class Game {
   }
 
   void playCard() {
-    if (saveChanceWinner != null) {
+    if (challengeChanceWinner != null) {
       return;
     }
     var hand = playerCards[currentPlayerIndex];
     var card = hand.removeAt(0);
     pileCards.add(PileCard(card, currentPlayerIndex, rng));
-    final chances = _saveChancesForCard(card);
+    final chances = _challengeChancesForCard(card);
     if (chances > 0) {
       // Face card.
-      numSaveChances = chances;
-      saveChanceOwner = currentPlayerIndex;
+      numChallengeChances = chances;
+      challengeChanceOwner = currentPlayerIndex;
       _moveToNextPlayer();
     }
-    else if (numSaveChances == null) {
+    else if (numChallengeChances == null) {
       // No face cards.
       _moveToNextPlayer();
     }
     else if (_isStopper(card)) {
-      numSaveChances = null;
+      numChallengeChances = null;
       _moveToNextPlayer();
     }
     else {
-      --numSaveChances;
-      if (numSaveChances <= 0) {
-        saveChanceWinner = saveChanceOwner;
+      --numChallengeChances;
+      if (numChallengeChances <= 0) {
+        challengeChanceWinner = challengeChanceOwner;
       }
       if (hand.isEmpty) {
         _moveToNextPlayer();
@@ -163,14 +164,41 @@ class Game {
     playerCards[playerIndex].addAll(pileCards.map((pc) => pc.card));
     pileCards = [];
     currentPlayerIndex = playerIndex;
-    numSaveChances = null;
-    saveChanceOwner = null;
-    saveChanceWinner = null;
+    numChallengeChances = null;
+    challengeChanceOwner = null;
+    challengeChanceWinner = null;
   }
 
   bool canSlapPile() {
-    int ps = pileCards.length;
-    return ps >= 2 && pileCards[ps - 1].card.rank == pileCards[ps - 2].card.rank;
+    final ps = pileCards.length;
+    if (ps >= 2 && pileCards[ps - 1].card.rank == pileCards[ps - 2].card.rank) {
+      return true;
+    }
+    if (rules.slapOnSandwich && ps >= 3 &&
+        pileCards[ps - 1].card.rank == pileCards[ps - 3].card.rank) {
+      return true;
+    }
+    if (rules.slapOnSameSuitOf4 && ps >= 4) {
+      Suit topSuit = pileCards[ps - 1].card.suit;
+      if (pileCards[ps - 2].card.suit == topSuit &&
+          pileCards[ps - 3].card.suit == topSuit &&
+          pileCards[ps - 4].card.suit == topSuit) {
+        return true;
+      }
+    }
+    if (rules.slapOnRunOf3 && ps >= 3) {
+      final numRanks = Rank.values.length;
+      final r1 = pileCards[ps - 1].card.rank.index;
+      final r2 = pileCards[ps - 2].card.rank.index;
+      final r3 = pileCards[ps - 3].card.rank.index;
+      if ((r2 == (r1 + 1) % numRanks) && r3 == (r1 + 2) % numRanks) {
+        return true;
+      }
+      if ((r2 == (r3 + 1) % numRanks) && r1 == (r3 + 2) % numRanks) {
+        return true;
+      }
+    }
+    return false;
   }
 
   int gameWinner() {
