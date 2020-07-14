@@ -572,7 +572,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     final makeCheckboxRow = (String title, Function(bool) setter, bool Function() getter) {
       return TableRow(children: [
-        Text(title, style: TextStyle(fontSize: minDim / 35)),
+        Text(title, style: TextStyle(fontSize: minDim / 30)),
         Checkbox(
           onChanged: (bool checked) {setState(() {setter(checked);});},
           value: getter(),
