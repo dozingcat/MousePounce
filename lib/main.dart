@@ -255,7 +255,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  Widget _pileCardWidget(final PileCard pc, final Size displaySize) {
+  Widget _pileCardWidget(final PileCard pc, final Size displaySize, [final rotationFrac = 1.0]) {
     final minDim = min(displaySize.width, displaySize.height);
     final maxOffset = minDim * 0.1;
     return Container(
@@ -265,7 +265,7 @@ class _MyHomePageState extends State<MyHomePage> {
             offset: Offset(pc.xOffset * maxOffset, pc.yOffset * maxOffset),
             child:
             Transform.rotate(
-              angle: pc.rotation * pi / 12,
+              angle: pc.rotation * rotationFrac * pi / 12,
               child: FractionallySizedBox(
                 alignment: Alignment.center,
                 heightFactor: 0.7,
@@ -314,12 +314,11 @@ class _MyHomePageState extends State<MyHomePage> {
                 onEnd: () {
                   setState(_playCardFinished);
                 },
-                child: _pileCardWidget(lastPileCard, displaySize),
                 builder: (BuildContext context, double animValue, Widget child) {
                   double startYOff = displaySize.height / 2 * (lastPileCard.playedBy == 0 ? 1 : -1);
                   return Transform.translate(
                     offset: Offset(0, startYOff * (1 - animValue)),
-                    child: child,
+                    child: _pileCardWidget(lastPileCard, displaySize, animValue),
                   );
                 },
               ),
@@ -353,6 +352,20 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget _mainMenuDialog(final Size displaySize) {
+    final minDim = min(displaySize.width, displaySize.height);
+
+    final makeButtonRow = (String title, Function onPressed) {
+      return TableRow(children: [
+        Padding(
+          padding: EdgeInsets.all(8),
+          child: RaisedButton(
+            onPressed: onPressed,
+            child: Text(title),
+          ),
+        ),
+      ]);
+    };
+
     return Container(
         width: double.infinity,
         height: double.infinity,
@@ -365,41 +378,19 @@ class _MyHomePageState extends State<MyHomePage> {
                 _paddingAll(10, Text(
                     'Egyptian Mouse Pounce',
                     style: TextStyle(
-                      fontSize: displaySize.width / 20,
+                      fontSize: minDim / 18,
                     )
                 )),
-                _paddingAll(10, Row(
-                  children: [Expanded(
-                    child: RaisedButton(
-                      onPressed: _startOnePlayerGame,
-                      child: Text('Play against computer'),
-                    ),
-                  )],
-                )),
-                _paddingAll(10, Row(
-                  children: [Expanded(
-                    child: RaisedButton(
-                      onPressed: _startTwoPlayerGame,
-                      child: Text('Play against human'),
-                    ),
-                  )],
-                )),
-                _paddingAll(10, Row(
-                  children: [Expanded(
-                    child: RaisedButton(
-                      onPressed: _showPreferences,
-                      child: Text('Preferences'),
-                    ),
-                  )],
-                )),
-                _paddingAll(10, Row(
-                  children: [Expanded(
-                    child: RaisedButton(
-                      onPressed: _watchAiGame,
-                      child: Text('Watch the cats'),
-                    ),
-                  )],
-                )),
+                Table(
+                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                  defaultColumnWidth: const IntrinsicColumnWidth(),
+                  children: [
+                    makeButtonRow('Play against computer', _startOnePlayerGame),
+                    makeButtonRow('Play against human', _startTwoPlayerGame),
+                    makeButtonRow('Preferences', _showPreferences),
+                    makeButtonRow('Watch the cats', _watchAiGame),
+                  ],
+                ),
               ],
             ),
           ),
@@ -441,6 +432,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget _gameOverDialog(final Size displaySize) {
+    final minDim = min(displaySize.width, displaySize.height);
     final winner = game.gameWinner();
     if (winner == null) {
       return Container();
@@ -460,7 +452,7 @@ class _MyHomePageState extends State<MyHomePage> {
               _paddingAll(10, Text(
                   title,
                   style: TextStyle(
-                    fontSize: displaySize.width / 20,
+                    fontSize: displaySize.width / 18,
                   )
               )),
               _paddingAll(10, Row(
@@ -576,9 +568,11 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget _preferencesDialog(final Size displaySize) {
+    final minDim = min(displaySize.width, displaySize.height);
+
     final makeCheckboxRow = (String title, Function(bool) setter, bool Function() getter) {
       return TableRow(children: [
-        Text(title),
+        Text(title, style: TextStyle(fontSize: minDim / 35)),
         Checkbox(
           onChanged: (bool checked) {setState(() {setter(checked);});},
           value: getter(),
@@ -598,7 +592,7 @@ class _MyHomePageState extends State<MyHomePage> {
               _paddingAll(10, Text(
                 'Preferences',
                 style: TextStyle(
-                  fontSize: displaySize.width / 20,
+                  fontSize: minDim / 20,
                 )
               )),
               Table(
