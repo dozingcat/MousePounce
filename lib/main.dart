@@ -249,7 +249,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Widget _cardImage(final PlayingCard card) {
     return Image(
-      image: AssetImage('assets/cards/' + card.asciiString() + '.png'),
+      image: AssetImage('assets/cards/' + card.asciiString() + '.webp'),
       fit: BoxFit.contain,
       alignment: Alignment.center,
     );
