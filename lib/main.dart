@@ -65,6 +65,14 @@ enum AIMode {human_vs_human, human_vs_ai, ai_vs_ai}
 
 enum DialogMode {none, main_menu, preferences, game_paused, game_over, statistics}
 
+enum AIMood {none, happy, very_happy, angry}
+
+final aiMoodImages = {
+  AIMood.happy: 'bubble_happy.png',
+  AIMood.very_happy: 'bubble_grin.png',
+  AIMood.angry: 'bubble_mad.png',
+};
+
 class _MyHomePageState extends State<MyHomePage> {
   Random rng = Random();
   Game game = Game();
@@ -75,18 +83,44 @@ class _MyHomePageState extends State<MyHomePage> {
   int aiSlapPlayerIndex;
   int aiSlapCounter = 0;
   List<int> catImageNumbers;
+  List<AIMood> aiMoods = [AIMood.none, AIMood.none];
+  int aiMoodCounter = 0;
   final numCatImages = 4;
 
-  _MyHomePageState() {
+  @override void initState() {
+    super.initState();
     game = Game(rng: rng);
     catImageNumbers = _randomCatImageNumbers();
+
     _scheduleAiPlayIfNeeded();
+  }
+
+  @override void didChangeDependencies() {
+    super.didChangeDependencies();
+    _preloadCardImages();
   }
 
   List<int> _randomCatImageNumbers() {
     int c1 = rng.nextInt(numCatImages);
     int c2 = (c1 + 1 + rng.nextInt(numCatImages - 1)) % numCatImages;
     return [c1 + 1, c2 + 1];
+  }
+
+  String _imagePathForCard(final PlayingCard card) {
+    return 'assets/cards/${card.asciiString()}.webp';
+  }
+
+  void _preloadCardImages() {
+    print('Preloading card images');
+    var numCardsLoaded = 0;
+    for (Rank r in Rank.values) {
+      for (Suit s in Suit.values) {
+        precacheImage(AssetImage(_imagePathForCard(PlayingCard(r, s))), context).then((_) {
+          numCardsLoaded += 1;
+          print(numCardsLoaded);
+        });
+      }
+    }
   }
 
   void _playCard() {
@@ -164,11 +198,54 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  final moodWeights = {
+    Rank.ace: 2,
+    Rank.king: 4,
+    Rank.queen: 6,
+    Rank.jack: 12,
+  };
+
+  void _setAiMoods(final List<AIMood> moods) {
+    aiMoodCounter += 1;
+    int previousMoodCounter = aiMoodCounter;
+    setState(() {aiMoods = moods;});
+    Future.delayed(const Duration(milliseconds: 5000), () {
+      if (previousMoodCounter == aiMoodCounter) {
+        setState(() {aiMoods = [AIMood.none, AIMood.none];});
+      }
+    });
+  }
+
+  // Whether the AI should show a mood after winning or losing a pile, as determined by the number
+  // and importance of cards in the pile.
+  bool _aiHasMoodForPile(final List<PileCard> pileCards) {
+    int total = 0;
+    for (PileCard pc in pileCards) {
+      int cval = moodWeights.containsKey(pc.card.rank) ? moodWeights[pc.card.rank] : 1;
+      total += cval;
+    }
+    return total > 16;
+  }
+
+  void _updateAiMoodsForPile(final List<PileCard> pileCards, final int pileWinner) {
+    if (_aiHasMoodForPile(pileCards)) {
+      var moods = pileWinner == 0 ? [AIMood.happy, AIMood.angry] : [AIMood.angry, AIMood.happy];
+      _setAiMoods(moods);
+    }
+  }
+
+  void _updateAiMoodsForGameWinner(int winner) {
+    var moods = winner == 0 ? [AIMood.very_happy, AIMood.angry] : [AIMood.angry, AIMood.very_happy];
+    _setAiMoods(moods);
+  }
+
   void _movePileToWinner() {
+    _updateAiMoodsForPile(game.pileCards, pileMovingToPlayer);
     game.movePileToPlayer(pileMovingToPlayer);
     int winner = game.gameWinner();
     if (winner != null) {
       print("Player ${winner} wins!");
+      _updateAiMoodsForGameWinner(winner);
       if (aiMode == AIMode.ai_vs_ai) {
         Future.delayed(const Duration(milliseconds: 2000), () {
           setState(() {
@@ -234,22 +311,40 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget _aiPlayerWidget(final Game game, final int playerIndex, final Size displaySize) {
+    final moodImage = aiMoodImages[aiMoods[playerIndex]];
     return Transform.rotate(
       angle: playerIndex == 1 ? 0 : pi,
-      child: Transform.translate(
-        offset: Offset(0, 10),
-        child: Image(
-          image: AssetImage('assets/cats/cat${catImageNumbers[playerIndex]}.png'),
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.center,
-        ),
-      ),
+      child: Stack(
+        children: [
+          Positioned.fill(child:
+            Transform.translate(
+              offset: Offset(0, 10),
+              child: Image(
+                image: AssetImage('assets/cats/cat${catImageNumbers[playerIndex]}.png'),
+                fit: BoxFit.fitHeight,
+                alignment: Alignment.center,
+              )
+            )
+          ),
+
+          if (moodImage != null) Positioned.fill(top: 5, bottom: 40, child:
+            Transform.translate(
+                offset: Offset(-100, 0),
+                child: Image(
+                  image: AssetImage('assets/cats/${moodImage}'),
+                  fit: BoxFit.fitHeight,
+                  alignment: Alignment.center,
+                )
+            )
+          ),
+        ],
+      )
     );
   }
 
   Widget _cardImage(final PlayingCard card) {
     return Image(
-      image: AssetImage('assets/cards/' + card.asciiString() + '.webp'),
+      image: AssetImage(_imagePathForCard(card)),
       fit: BoxFit.contain,
       alignment: Alignment.center,
     );
@@ -634,14 +729,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // print(animationMode);
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     final displaySize = MediaQuery.of(context).size;
+    final playerHeight = 120.0; // displaySize.height / 9;
     return Scaffold(
       backgroundColor: Color.fromARGB(255, 0, 128, 0),
       body: Center(
@@ -649,18 +738,14 @@ class _MyHomePageState extends State<MyHomePage> {
           children: [
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                // _playerStatusWidget(game, 1, displaySize),
+              children: [
                 Container(
+                  height: playerHeight,
+                  width: double.infinity,
                   color: Colors.white70,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      aiMode == AIMode.human_vs_human ?
-                      _playerStatusWidget(game, 1, displaySize) :
-                      _aiPlayerWidget(game, 1, displaySize),
-                    ],
-                  ),
+                  child: aiMode == AIMode.human_vs_human ?
+                    _playerStatusWidget(game, 1, displaySize) :
+                    _aiPlayerWidget(game, 1, displaySize)
                 ),
                 Expanded(
                   child:
@@ -669,15 +754,13 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                 ),
                 Container(
+                  height: playerHeight,
+                  width: double.infinity,
                   color: Colors.white70,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      aiMode == AIMode.ai_vs_ai ?
+                  child: aiMode == AIMode.ai_vs_ai ?
                         _aiPlayerWidget(game, 0, displaySize) :
-                        _playerStatusWidget(game, 0, displaySize),
-                    ],
-                )),
+                        _playerStatusWidget(game, 0, displaySize)
+                ),
               ],
             ),
             if (dialogMode == DialogMode.main_menu) _mainMenuDialog(displaySize),
