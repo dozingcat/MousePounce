@@ -2,6 +2,8 @@ import 'dart:math';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'game.dart';
 
 void main() {
@@ -73,6 +75,12 @@ final aiMoodImages = {
   AIMood.angry: 'bubble_mad.png',
 };
 
+enum AISlapSpeed {slow, medium, fast}
+
+String prefsKeyForVariation(RuleVariation v) {
+  return 'rule.${v.toString()}';
+}
+
 class _MyHomePageState extends State<MyHomePage> {
   Random rng = Random();
   Game game = Game();
@@ -85,19 +93,28 @@ class _MyHomePageState extends State<MyHomePage> {
   List<int> catImageNumbers;
   List<AIMood> aiMoods = [AIMood.none, AIMood.none];
   int aiMoodCounter = 0;
+  AISlapSpeed aiSlapSpeed = AISlapSpeed.medium;
   final numCatImages = 4;
 
   @override void initState() {
     super.initState();
     game = Game(rng: rng);
     catImageNumbers = _randomCatImageNumbers();
-
-    _scheduleAiPlayIfNeeded();
+    _readPreferencesAndStartGame();
   }
 
-  @override void didChangeDependencies() {
+  @override void didChangeDependencies() async {
     super.didChangeDependencies();
     _preloadCardImages();
+  }
+
+  void _readPreferencesAndStartGame() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    for (RuleVariation v in RuleVariation.values) {
+      bool enabled = prefs.getBool(prefsKeyForVariation(v)) ?? false;
+      game.rules.setVariationEnabled(v, enabled);
+    }
+    _scheduleAiPlayIfNeeded();
   }
 
   List<int> _randomCatImageNumbers() {
@@ -156,7 +173,17 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   int _aiSlapDelayMillis() {
-    return 300 + (500 * rng.nextDouble()).toInt();
+    int baseDelay = 300 + (500 * rng.nextDouble()).toInt();
+    switch (aiSlapSpeed) {
+      case AISlapSpeed.medium:
+        return baseDelay;
+      case AISlapSpeed.fast:
+        return (baseDelay * 0.6).toInt();
+      case AISlapSpeed.slow:
+        return baseDelay * 2;
+      default:
+        throw AssertionError('Unknown AISlapSpeed');
+    }
   }
 
   void _playCardFinished() {
@@ -329,7 +356,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
           if (moodImage != null) Positioned.fill(top: 5, bottom: 40, child:
             Transform.translate(
-                offset: Offset(-100, 0),
+                offset: Offset(110, 0),
                 child: Image(
                   image: AssetImage('assets/cats/${moodImage}'),
                   fit: BoxFit.fitHeight,
@@ -527,7 +554,6 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget _gameOverDialog(final Size displaySize) {
-    final minDim = min(displaySize.width, displaySize.height);
     final winner = game.gameWinner();
     if (winner == null) {
       return Container();
@@ -664,15 +690,41 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Widget _preferencesDialog(final Size displaySize) {
     final minDim = min(displaySize.width, displaySize.height);
+    final baseFontSize = minDim / 18.0;
 
-    final makeCheckboxRow = (String title, Function(bool) setter, bool Function() getter) {
+    final makeRuleCheckboxRow = (String title, RuleVariation v) {
       return TableRow(children: [
-        Text(title, style: TextStyle(fontSize: minDim / 30)),
+        Text(title, style: TextStyle(fontSize: baseFontSize)),
         Checkbox(
-          onChanged: (bool checked) {setState(() {setter(checked);});},
-          value: getter(),
+          onChanged: (bool checked) async {
+            setState(() {game.rules.setVariationEnabled(v, checked);});
+            SharedPreferences prefs = await SharedPreferences.getInstance();
+            prefs.setBool(prefsKeyForVariation(v), checked);
+          },
+          value: game.rules.isVariationEnabled(v),
         )
       ]);
+    };
+
+    final makeAiSpeedRow = () {
+      final menuItemStyle = TextStyle(fontSize: baseFontSize * 0.9, fontWeight: FontWeight.normal);
+      return _paddingAll(0, Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Text('AI slap speed:', style: TextStyle(fontSize: baseFontSize)),
+        _paddingAll(10, DropdownButton(
+          value: aiSlapSpeed,
+          onChanged: (AISlapSpeed value) {
+            setState(() {
+              aiSlapSpeed = value;
+            });
+          },
+          items: [
+            DropdownMenuItem(value: AISlapSpeed.slow, child: Text('Slow', style: menuItemStyle)),
+            DropdownMenuItem(
+                value: AISlapSpeed.medium, child: Text('Medium', style: menuItemStyle)),
+            DropdownMenuItem(value: AISlapSpeed.fast, child: Text('Fast', style: menuItemStyle)),
+          ],
+        )),
+      ]));
     };
 
     return Container(
@@ -687,29 +739,19 @@ class _MyHomePageState extends State<MyHomePage> {
               _paddingAll(10, Text(
                 'Preferences',
                 style: TextStyle(
-                  fontSize: minDim / 20,
+                  fontSize: minDim / 18,
                 )
               )),
+              makeAiSpeedRow(),
               Table(
                 defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                 defaultColumnWidth: const IntrinsicColumnWidth(),
                 children: [
-                  makeCheckboxRow('Tens are stoppers',
-                          (bool checked) {game.rules.tenIsStopper = checked;},
-                          () {return game.rules.tenIsStopper;}
-                  ),
-                  makeCheckboxRow('Slap on sandwiches',
-                          (bool checked) {game.rules.slapOnSandwich = checked;},
-                          () {return game.rules.slapOnSandwich;}
-                  ),
-                  makeCheckboxRow('Slap on run of 3',
-                          (bool checked) {game.rules.slapOnRunOf3 = checked;},
-                          () {return game.rules.slapOnRunOf3;}
-                  ),
-                  makeCheckboxRow('Slap on 4 of same suit',
-                          (bool checked) {game.rules.slapOnSameSuitOf4 = checked;},
-                          () {return game.rules.slapOnSameSuitOf4;}
-                  ),
+                  makeRuleCheckboxRow('Tens are stoppers', RuleVariation.ten_is_stopper),
+                  makeRuleCheckboxRow('Slap on sandwiches', RuleVariation.slap_on_sandwich),
+                  makeRuleCheckboxRow('Slap on run of 3', RuleVariation.slap_on_run_of_3),
+                  makeRuleCheckboxRow(
+                      'Slap on 4 of same suit', RuleVariation.slap_on_same_suit_of_4),
                 ],
               ),
               _paddingAll(10, Row(

@@ -62,11 +62,23 @@ class PileCard {
       rotation = 2 * rng.nextDouble() - 1;
 }
 
+enum RuleVariation {
+  ten_is_stopper,
+  slap_on_sandwich,
+  slap_on_run_of_3,
+  slap_on_same_suit_of_4,
+}
+
 class GameRules {
-  bool tenIsStopper = false;
-  bool slapOnSandwich = false;
-  bool slapOnRunOf3 = false;
-  bool slapOnSameSuitOf4 = false;
+  Set<RuleVariation> _enabledVariations = Set();
+
+  bool isVariationEnabled(RuleVariation v) {
+    return _enabledVariations.contains(v);
+  }
+
+  void setVariationEnabled(RuleVariation v, bool enabled) {
+    enabled ? _enabledVariations.add(v) : _enabledVariations.remove(v);
+  }
 }
 
 class Game {
@@ -112,7 +124,7 @@ class Game {
   }
 
   bool _isStopper(final PlayingCard card) {
-    if (rules.tenIsStopper && card.rank == Rank.ten) {
+    if (rules.isVariationEnabled(RuleVariation.ten_is_stopper) && card.rank == Rank.ten) {
       return true;
     }
     return card.rank.index >= Rank.jack.index;
@@ -174,11 +186,11 @@ class Game {
     if (ps >= 2 && pileCards[ps - 1].card.rank == pileCards[ps - 2].card.rank) {
       return true;
     }
-    if (rules.slapOnSandwich && ps >= 3 &&
+    if (rules.isVariationEnabled(RuleVariation.slap_on_sandwich) && ps >= 3 &&
         pileCards[ps - 1].card.rank == pileCards[ps - 3].card.rank) {
       return true;
     }
-    if (rules.slapOnSameSuitOf4 && ps >= 4) {
+    if (rules.isVariationEnabled(RuleVariation.slap_on_same_suit_of_4) && ps >= 4) {
       Suit topSuit = pileCards[ps - 1].card.suit;
       if (pileCards[ps - 2].card.suit == topSuit &&
           pileCards[ps - 3].card.suit == topSuit &&
@@ -186,7 +198,7 @@ class Game {
         return true;
       }
     }
-    if (rules.slapOnRunOf3 && ps >= 3) {
+    if (rules.isVariationEnabled(RuleVariation.slap_on_run_of_3) && ps >= 3) {
       final numRanks = Rank.values.length;
       final r1 = pileCards[ps - 1].card.rank.index;
       final r2 = pileCards[ps - 2].card.rank.index;
