@@ -81,6 +81,8 @@ String prefsKeyForVariation(RuleVariation v) {
   return 'rule.${v.toString()}';
 }
 
+final String aiSlapSpeedPrefsKey = 'ai_slap_speed';
+
 class _MyHomePageState extends State<MyHomePage> {
   Random rng = Random();
   Game game = Game();
@@ -114,6 +116,11 @@ class _MyHomePageState extends State<MyHomePage> {
       bool enabled = prefs.getBool(prefsKeyForVariation(v)) ?? false;
       game.rules.setVariationEnabled(v, enabled);
     }
+
+    final speedStr = prefs.getString(aiSlapSpeedPrefsKey) ?? '';
+    aiSlapSpeed = AISlapSpeed.values.firstWhere(
+            (s) => s.toString() == speedStr, orElse: () => AISlapSpeed.medium);
+
     _scheduleAiPlayIfNeeded();
   }
 
@@ -200,9 +207,7 @@ class _MyHomePageState extends State<MyHomePage> {
             pileMovingToPlayer = aiIndex;
             aiSlapPlayerIndex = aiIndex;
             Future.delayed(Duration(milliseconds: 1000), () {
-              setState(() {
-                animationMode = AnimationMode.pile_to_winner;
-              });
+              setState(() => animationMode = AnimationMode.pile_to_winner);
             });
           });
         }
@@ -214,9 +219,7 @@ class _MyHomePageState extends State<MyHomePage> {
         animationMode = AnimationMode.waiting_to_move_pile;
         pileMovingToPlayer = pileWinner;
         Future.delayed(const Duration(milliseconds: 1000), () {
-          setState(() {
-            animationMode = AnimationMode.pile_to_winner;
-          });
+          setState(() => animationMode = AnimationMode.pile_to_winner);
         });
       }
       else {
@@ -235,10 +238,10 @@ class _MyHomePageState extends State<MyHomePage> {
   void _setAiMoods(final List<AIMood> moods) {
     aiMoodCounter += 1;
     int previousMoodCounter = aiMoodCounter;
-    setState(() {aiMoods = moods;});
+    setState(() => aiMoods = moods);
     Future.delayed(const Duration(milliseconds: 5000), () {
       if (previousMoodCounter == aiMoodCounter) {
-        setState(() {aiMoods = [AIMood.none, AIMood.none];});
+        setState(() => aiMoods = [AIMood.none, AIMood.none]);
       }
     });
   }
@@ -295,9 +298,7 @@ class _MyHomePageState extends State<MyHomePage> {
       return;
     }
     if (game.currentPlayerIndex == pnum) {
-      setState(() {
-        _playCard();
-      });
+      setState(_playCard);
     }
   }
 
@@ -326,7 +327,7 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Padding(
           padding: EdgeInsets.all(0.025 * displaySize.height),
           child: RaisedButton(
-            onPressed: enabled ? (() {_playCardIfPlayerTurn(playerIndex);}) : null,
+            onPressed: enabled ? (() => _playCardIfPlayerTurn(playerIndex)) : null,
           child: Padding(padding: EdgeInsets.all(10), child: Text (
               'Play card: ${game.playerCards[playerIndex].length} left',
               style: TextStyle(
@@ -433,9 +434,7 @@ class _MyHomePageState extends State<MyHomePage> {
               if (lastPileCard != null) TweenAnimationBuilder(
                 tween: Tween(begin: 0.0, end: 1.0),
                 duration: Duration(milliseconds: 200),
-                onEnd: () {
-                  setState(_playCardFinished);
-                },
+                onEnd: () => setState(_playCardFinished),
                 builder: (BuildContext context, double animValue, Widget child) {
                   double startYOff = displaySize.height / 2 * (lastPileCard.playedBy == 0 ? 1 : -1);
                   return Transform.translate(
@@ -452,9 +451,7 @@ class _MyHomePageState extends State<MyHomePage> {
         return TweenAnimationBuilder(
           tween: Tween(begin: 0.0, end: 1.0),
           duration: Duration(milliseconds: 300),
-          onEnd: () {
-            setState(_movePileToWinner);
-          },
+          onEnd: () => setState(_movePileToWinner),
           child: Stack(children: _pileCardWidgets(game.pileCards, displaySize)),
           builder: (BuildContext context, double animValue, Widget child) {
             return Transform.translate(
@@ -697,7 +694,7 @@ class _MyHomePageState extends State<MyHomePage> {
         Text(title, style: TextStyle(fontSize: baseFontSize)),
         Checkbox(
           onChanged: (bool checked) async {
-            setState(() {game.rules.setVariationEnabled(v, checked);});
+            setState(() => game.rules.setVariationEnabled(v, checked));
             SharedPreferences prefs = await SharedPreferences.getInstance();
             prefs.setBool(prefsKeyForVariation(v), checked);
           },
@@ -712,10 +709,10 @@ class _MyHomePageState extends State<MyHomePage> {
         Text('AI slap speed:', style: TextStyle(fontSize: baseFontSize)),
         _paddingAll(10, DropdownButton(
           value: aiSlapSpeed,
-          onChanged: (AISlapSpeed value) {
-            setState(() {
-              aiSlapSpeed = value;
-            });
+          onChanged: (AISlapSpeed value) async {
+            setState(() => aiSlapSpeed = value);
+            SharedPreferences prefs = await SharedPreferences.getInstance();
+            prefs.setString(aiSlapSpeedPrefsKey, value.toString());
           },
           items: [
             DropdownMenuItem(value: AISlapSpeed.slow, child: Text('Slow', style: menuItemStyle)),
