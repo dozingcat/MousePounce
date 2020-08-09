@@ -24,6 +24,7 @@ class MyApp extends StatelessWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       home: MyHomePage(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
@@ -116,13 +117,11 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _preloadCardImages() {
-    print('Preloading card images');
     var numCardsLoaded = 0;
     for (Rank r in Rank.values) {
       for (Suit s in Suit.values) {
         precacheImage(AssetImage(_imagePathForCard(PlayingCard(r, s))), context).then((_) {
           numCardsLoaded += 1;
-          print(numCardsLoaded);
         });
       }
     }
@@ -250,7 +249,6 @@ class _MyHomePageState extends State<MyHomePage> {
     game.movePileToPlayer(pileMovingToPlayer);
     int winner = game.gameWinner();
     if (winner != null) {
-      print("Player ${winner} wins!");
       _updateAiMoodsForGameWinner(winner);
       if (aiMode == AIMode.ai_vs_ai) {
         Future.delayed(const Duration(milliseconds: 2000), () {
@@ -286,7 +284,6 @@ class _MyHomePageState extends State<MyHomePage> {
     if (aiMode == AIMode.human_vs_human) {
       pnum = (globalOffset.dy > globalHeight / 2) ? 0 : 1;
     }
-    print('Tap: ${globalOffset.dy} ${globalHeight} ${pnum}');
     if (game.canSlapPile()) {
       setState(() {
         aiSlapCounter++;
