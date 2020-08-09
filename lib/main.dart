@@ -698,7 +698,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Widget _preferencesDialog(final Size displaySize) {
     final minDim = min(displaySize.width, displaySize.height);
-    final baseFontSize = minDim / 18.0;
+    final titleFontSize = min(36.0, minDim / 15.0);
+    final baseFontSize = min(24.0, minDim / 18.0);
 
     final makeRuleCheckboxRow = (String title, RuleVariation v) {
       return TableRow(children: [
@@ -740,16 +741,11 @@ class _MyHomePageState extends State<MyHomePage> {
       height: double.infinity,
       child: Center(
         child: Dialog(
-          backgroundColor: Color.fromARGB(0xc0, 0xc0, 0xc0, 0xc0),
+          backgroundColor: Color.fromARGB(0xd0, 0xc0, 0xc0, 0xc0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _paddingAll(10, Text(
-                'Preferences',
-                style: TextStyle(
-                  fontSize: minDim / 18,
-                )
-              )),
+              _paddingAll(10, Text('Preferences', style: TextStyle(fontSize: titleFontSize))),
               makeAiSpeedRow(),
               Table(
                 defaultVerticalAlignment: TableCellVerticalAlignment.middle,
