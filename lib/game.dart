@@ -229,13 +229,3 @@ class Game {
     return potentialWinner;
   }
 }
-
-void main() {
-  var sum = 0.0;
-  for (var i = 0; i < 10000; i++) {
-    for (var j = 0; j < 10000; j++) {
-      sum += cos(i * j / 1e8);
-    }
-  }
-  print(sum);
-}

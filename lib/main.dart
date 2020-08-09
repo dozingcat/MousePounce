@@ -2,7 +2,9 @@ import 'dart:math';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'game.dart';
 
@@ -18,19 +20,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
         primarySwatch: Colors.blue,
-        // This makes the visual density adapt to the platform that you run
-        // the app on. For desktop platforms, the controls will be smaller and
-        // closer together (more dense) than on mobile platforms.
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       home: MyHomePage(),
@@ -40,15 +30,6 @@ class MyApp extends StatelessWidget {
 
 class MyHomePage extends StatefulWidget {
   MyHomePage({Key key}) : super(key: key);
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
 
   @override
   _MyHomePageState createState() => _MyHomePageState();
@@ -149,11 +130,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _playCard() {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
       game.playCard();
       animationMode = AnimationMode.play_card_back;
       aiSlapCounter++;
@@ -412,8 +388,25 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget _pileContent(final Game game, final Size displaySize) {
     final pileCardsWithoutLast = game.pileCards.sublist(0, max(0, game.pileCards.length - 1));
     final lastPileCard = game.pileCards.isNotEmpty ? game.pileCards.last : null;
-    switch (animationMode) {
 
+    /* // Fixed cards to take screenshots for icon.
+    final demoCards = [
+      PileCard(PlayingCard(Rank.queen, Suit.diamonds), 0, rng),
+      PileCard(PlayingCard(Rank.four, Suit.spades), 0, rng),
+      PileCard(PlayingCard(Rank.four, Suit.hearts), 0, rng),
+    ];
+    demoCards[0].xOffset = -0.7;
+    demoCards[0].yOffset = 0.2;
+    demoCards[0].rotation = -0.25;
+    demoCards[1].xOffset = -0.3;
+    demoCards[1].yOffset = -0.2;
+    demoCards[1].rotation = 0.15;
+    demoCards[2].xOffset = 0.6;
+    demoCards[2].yOffset = 0.0;
+    demoCards[2].rotation = 0.0;
+    */
+
+    switch (animationMode) {
       case AnimationMode.none:
       case AnimationMode.waiting_to_move_pile:
         return Stack(children: _pileCardWidgets(game.pileCards, displaySize));
@@ -470,7 +463,7 @@ class _MyHomePageState extends State<MyHomePage> {
     return Padding(padding: EdgeInsets.all(paddingPx), child: child);
   }
 
-  Widget _mainMenuDialog(final Size displaySize) {
+  Widget _mainMenuDialog(final BuildContext context, final Size displaySize) {
     final minDim = min(displaySize.width, displaySize.height);
 
     final makeButtonRow = (String title, Function onPressed) {
@@ -506,8 +499,9 @@ class _MyHomePageState extends State<MyHomePage> {
                   children: [
                     makeButtonRow('Play against computer', _startOnePlayerGame),
                     makeButtonRow('Play against human', _startTwoPlayerGame),
-                    makeButtonRow('Preferences', _showPreferences),
                     makeButtonRow('Watch the cats', _watchAiGame),
+                    makeButtonRow('Preferences...', _showPreferences),
+                    makeButtonRow('About...', () => _showAboutDialog(context)),
                   ],
                 ),
               ],
@@ -685,6 +679,23 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  void _showAboutDialog(BuildContext context) async {
+    final aboutText = await DefaultAssetBundle.of(context).loadString('assets/doc/about.md');
+    showAboutDialog(
+        context: context,
+        applicationName: 'Egyptian Mouse Pounce',
+        applicationVersion: '1.0.0',
+        applicationLegalese: '© 2020 Brian Nenninger',
+        children: [
+          Container(height: 15),
+          MarkdownBody(
+            data: aboutText,
+            onTapLink: (url) => launch(url),
+          ),
+        ],
+    );
+  }
+
   Widget _preferencesDialog(final Size displaySize) {
     final minDim = min(displaySize.width, displaySize.height);
     final baseFontSize = minDim / 18.0;
@@ -802,7 +813,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ],
             ),
-            if (dialogMode == DialogMode.main_menu) _mainMenuDialog(displaySize),
+            if (dialogMode == DialogMode.main_menu) _mainMenuDialog(context, displaySize),
             if (dialogMode == DialogMode.game_paused)
               _pausedMenuDialog(displaySize),
             if (dialogMode == DialogMode.game_over) _gameOverDialog(displaySize),
