@@ -1,2 +1,1 @@
- 
 Play Egyptian Rat Screw, a game of reflexes and luck where you win by playing face cards or slapping when pairs are played consecutively. You can play against another human or against computer-controlled cats at three difficulty levels.
