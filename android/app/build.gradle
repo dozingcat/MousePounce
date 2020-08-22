@@ -61,9 +61,12 @@ android {
     }
 
     // fdroid config from https://nikhiljha.com/posts/flutteronfdroid/
+    // Had to add "std" flavor in order to build with default signing config.
     flavorDimensions "deploy"
 
     productFlavors {
+        std {}
+
         fdroid {
             dimension "deploy"
             signingConfig null
