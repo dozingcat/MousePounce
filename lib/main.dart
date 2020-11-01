@@ -549,7 +549,6 @@ class _MyHomePageState extends State<MyHomePage> {
     }
     final minDim = min(displaySize.width, displaySize.height);
     final size = min(minDim * 0.2, 100.0);
-    // HERE: paw with no.png and timeout count.
     final padding = 10.0;
     return Positioned(
       left: playerIndex == 0 ? padding : null,
@@ -832,7 +831,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
     final makeRuleCheckboxRow = (String title, RuleVariation v) {
       return TableRow(children: [
-        // Text(title, style: TextStyle(fontSize: baseFontSize)),
         CheckboxListTile(
           dense: true,
           title: Text(title, style: TextStyle(fontSize: baseFontSize)),
