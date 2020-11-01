@@ -69,8 +69,18 @@ enum RuleVariation {
   slap_on_same_suit_of_4,
 }
 
+// Penalty options for incorrect slaps.
+enum BadSlapPenaltyType {
+  none,
+  // A card is put on the bottom of the pile.
+  penalty_card,
+  // The offending player can't slap for the next N cards.
+  slap_timeout,
+}
+
 class GameRules {
   Set<RuleVariation> _enabledVariations = Set();
+  BadSlapPenaltyType badSlapPenalty = BadSlapPenaltyType.none;
 
   bool isVariationEnabled(RuleVariation v) {
     return _enabledVariations.contains(v);
@@ -86,10 +96,13 @@ class Game {
   Random rng;
   List<List<PlayingCard>> playerCards;
   List<PileCard> pileCards;
+  // Penalty cards go at the bottom of the pile, and don't count for slaps.
+  int numPenaltyCardsInPile;
   int currentPlayerIndex;
   int numChallengeChances;
   int challengeChanceOwner;
   int challengeChanceWinner;
+  List<int> slapTimeoutCardsRemaining;
 
   Game({Random rng, GameRules rules}) {
     this.rng = rng ?? Random();
@@ -107,6 +120,8 @@ class Game {
     numChallengeChances = null;
     challengeChanceOwner = null;
     challengeChanceWinner = null;
+    numPenaltyCardsInPile = 0;
+    slapTimeoutCardsRemaining = [0, 0];
   }
 
   int get numPlayers {
@@ -170,11 +185,28 @@ class Game {
         _moveToNextPlayer();
       }
     }
+    for (var i = 0; i < slapTimeoutCardsRemaining.length; i++) {
+      int n = slapTimeoutCardsRemaining[i];
+      slapTimeoutCardsRemaining[i] = max(0, n - 1);
+    }
+  }
+
+  PileCard addPenaltyCard(final int playerIndex) {
+    var hand = playerCards[playerIndex];
+    if (hand.isNotEmpty) {
+      var card = hand.removeAt(0);
+      var pc = PileCard(card, playerIndex, rng);
+      pileCards.insert(0, pc);
+      numPenaltyCardsInPile += 1;
+      return pc;
+    }
+    return null;
   }
 
   void movePileToPlayer(final int playerIndex) {
     playerCards[playerIndex].addAll(pileCards.map((pc) => pc.card));
     pileCards = [];
+    numPenaltyCardsInPile = 0;
     currentPlayerIndex = playerIndex;
     numChallengeChances = null;
     challengeChanceOwner = null;
@@ -182,27 +214,29 @@ class Game {
   }
 
   bool canSlapPile() {
-    final ps = pileCards.length;
-    if (ps >= 2 && pileCards[ps - 1].card.rank == pileCards[ps - 2].card.rank) {
+    // Penalty cards don't count.
+    final activeCards = pileCards.sublist(numPenaltyCardsInPile);
+    final ps = activeCards.length;
+    if (ps >= 2 && activeCards[ps - 1].card.rank == activeCards[ps - 2].card.rank) {
       return true;
     }
     if (rules.isVariationEnabled(RuleVariation.slap_on_sandwich) && ps >= 3 &&
-        pileCards[ps - 1].card.rank == pileCards[ps - 3].card.rank) {
+        activeCards[ps - 1].card.rank == activeCards[ps - 3].card.rank) {
       return true;
     }
     if (rules.isVariationEnabled(RuleVariation.slap_on_same_suit_of_4) && ps >= 4) {
       Suit topSuit = pileCards[ps - 1].card.suit;
-      if (pileCards[ps - 2].card.suit == topSuit &&
-          pileCards[ps - 3].card.suit == topSuit &&
-          pileCards[ps - 4].card.suit == topSuit) {
+      if (activeCards[ps - 2].card.suit == topSuit &&
+          activeCards[ps - 3].card.suit == topSuit &&
+          activeCards[ps - 4].card.suit == topSuit) {
         return true;
       }
     }
     if (rules.isVariationEnabled(RuleVariation.slap_on_run_of_3) && ps >= 3) {
       final numRanks = Rank.values.length;
-      final r1 = pileCards[ps - 1].card.rank.index;
-      final r2 = pileCards[ps - 2].card.rank.index;
-      final r3 = pileCards[ps - 3].card.rank.index;
+      final r1 = activeCards[ps - 1].card.rank.index;
+      final r2 = activeCards[ps - 2].card.rank.index;
+      final r3 = activeCards[ps - 3].card.rank.index;
       if ((r2 == (r1 + 1) % numRanks) && r3 == (r1 + 2) % numRanks) {
         return true;
       }
@@ -211,6 +245,19 @@ class Game {
       }
     }
     return false;
+  }
+
+  bool isPlayerAllowedToSlap(final int playerIndex) {
+    return !(rules.badSlapPenalty == BadSlapPenaltyType.slap_timeout &&
+        slapTimeoutCardsRemaining[playerIndex] > 0);
+  }
+
+  int slapTimeoutCardsForPlayer(final int playerIndex) {
+    return slapTimeoutCardsRemaining[playerIndex];
+  }
+
+  void setSlapTimeoutCardsForPlayer(final int cards, final int playerIndex) {
+    slapTimeoutCardsRemaining[playerIndex] = cards;
   }
 
   int gameWinner() {

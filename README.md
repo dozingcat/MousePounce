@@ -8,6 +8,7 @@ If you're building on Android, you'll need to specify the "std" [build flavor](h
 
 ### Credits
 - Cats and paws by [AnnaliseArt on Pixabay](https://pixabay.com/illustrations/cats-hanging-cats-kitty-cat-paw-3611310/)
-- Thought bubble by [OpenClipart-Vectors on Pixabay](https://pixabay.com/vectors/balloon-bubble-speech-thought-150981/)
 - Cat emojis from [Noto Emoji by Google](https://github.com/googlefonts/noto-emoji/)
+- Thought bubble by [OpenClipart-Vectors on Pixabay](https://pixabay.com/vectors/balloon-bubble-speech-thought-150981/)
+- "No" symbol by [OpenClipart-Vectors on Pixabay](https://pixabay.com/vectors/unauthorised-denied-ban-prohibition-156169/)
 - [Playing card images](https://code.google.com/archive/p/vector-playing-cards/)

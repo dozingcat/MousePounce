@@ -54,6 +54,7 @@ flutter:
     - assets/cards/
     - assets/cats/
     - assets/doc/
+    - assets/misc/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.
