@@ -43,7 +43,10 @@ enum AnimationMode {
   ai_slap,
   waiting_to_move_pile,
   pile_to_winner,
+  illegal_slap,
 }
+
+final illegalSlapAnimationDuration = Duration(milliseconds: 600);
 
 enum AIMode {human_vs_human, human_vs_ai, ai_vs_ai}
 
@@ -64,6 +67,7 @@ String prefsKeyForVariation(RuleVariation v) {
 }
 
 final String aiSlapSpeedPrefsKey = 'ai_slap_speed';
+final String badSlapPenaltyPrefsKey = 'bad_slap_penalty';
 
 class _MyHomePageState extends State<MyHomePage> {
   Random rng = Random();
@@ -72,6 +76,8 @@ class _MyHomePageState extends State<MyHomePage> {
   AIMode aiMode = AIMode.ai_vs_ai;
   DialogMode dialogMode = DialogMode.main_menu;
   int pileMovingToPlayer;
+  PileCard penaltyCard;
+  bool penaltyCardPlayed = false;
   int aiSlapPlayerIndex;
   int aiSlapCounter = 0;
   List<int> catImageNumbers;
@@ -84,6 +90,7 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
     game = Game(rng: rng);
     catImageNumbers = _randomCatImageNumbers();
+    penaltyCard = null;
     _readPreferencesAndStartGame();
   }
 
@@ -94,14 +101,18 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _readPreferencesAndStartGame() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    for (RuleVariation v in RuleVariation.values) {
+    for (var v in RuleVariation.values) {
       bool enabled = prefs.getBool(prefsKeyForVariation(v)) ?? false;
       game.rules.setVariationEnabled(v, enabled);
     }
 
     final speedStr = prefs.getString(aiSlapSpeedPrefsKey) ?? '';
     aiSlapSpeed = AISlapSpeed.values.firstWhere(
-            (s) => s.toString() == speedStr, orElse: () => AISlapSpeed.medium);
+        (s) => s.toString() == speedStr, orElse: () => AISlapSpeed.medium);
+
+    final penaltyStr = prefs.getString(badSlapPenaltyPrefsKey) ?? '';
+    game.rules.badSlapPenalty = BadSlapPenaltyType.values.firstWhere(
+        (s) => s.toString() == penaltyStr, orElse: () => BadSlapPenaltyType.none);
 
     _scheduleAiPlayIfNeeded();
   }
@@ -132,11 +143,18 @@ class _MyHomePageState extends State<MyHomePage> {
       game.playCard();
       animationMode = AnimationMode.play_card_back;
       aiSlapCounter++;
+      penaltyCard = null;
+      penaltyCardPlayed = false;
     });
   }
-
+  
   bool _shouldAiPlayCard() {
     if (game.gameWinner() != null) {
+      return false;
+    }
+    // Don't play if we're in the middle of another animation (e.g. penalty card).
+    // _scheduleAiPlayIfNeeded should be called when the animation finishes.
+    if (animationMode != AnimationMode.none) {
       return false;
     }
     return aiMode == AIMode.ai_vs_ai ||
@@ -284,6 +302,9 @@ class _MyHomePageState extends State<MyHomePage> {
     if (aiMode == AIMode.human_vs_human) {
       pnum = (globalOffset.dy > globalHeight / 2) ? 0 : 1;
     }
+    if (!game.isPlayerAllowedToSlap(pnum)) {
+      return;
+    }
     if (game.canSlapPile()) {
       setState(() {
         aiSlapCounter++;
@@ -291,6 +312,34 @@ class _MyHomePageState extends State<MyHomePage> {
         animationMode = AnimationMode.pile_to_winner;
       });
     }
+    else {
+      _handleIllegalSlap(pnum);
+    }
+  }
+
+  void _handleIllegalSlap(final int playerIndex) {
+    setState(() {
+      animationMode = AnimationMode.illegal_slap;
+      switch (game.rules.badSlapPenalty) {
+        case BadSlapPenaltyType.penalty_card:
+          // Only one penalty card per real card?
+          if (!penaltyCardPlayed) {
+            penaltyCard = game.addPenaltyCard(playerIndex);
+            penaltyCardPlayed = (penaltyCard != null);
+          }
+          break;
+        case BadSlapPenaltyType.slap_timeout:
+          game.setSlapTimeoutCardsForPlayer(5, playerIndex);
+          break;
+      }
+    });
+    Future.delayed(illegalSlapAnimationDuration, () {
+      setState(() {
+        animationMode = AnimationMode.none;
+        penaltyCard = null;
+      });
+      _scheduleAiPlayIfNeeded();
+    });
   }
 
   Widget _playerStatusWidget(final Game game, final int playerIndex, final Size displaySize) {
@@ -351,7 +400,8 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  Widget _pileCardWidget(final PileCard pc, final Size displaySize, [final rotationFrac = 1.0]) {
+  Widget _pileCardWidget(
+      final PileCard pc, final Size displaySize, {final rotationFrac = 1.0}) {
     final minDim = min(displaySize.width, displaySize.height);
     final maxOffset = minDim * 0.1;
     return Container(
@@ -368,7 +418,9 @@ class _MyHomePageState extends State<MyHomePage> {
                 widthFactor: 0.7,
                 child: GestureDetector(
                     onTapDown: (TapDownDetails tap) {
-                      _doSlap(tap.globalPosition, displaySize.height);
+                      if (dialogMode == DialogMode.none) {
+                        _doSlap(tap.globalPosition, displaySize.height);
+                      }
                     },
                     child: _cardImage(pc.card),
                 ),
@@ -429,7 +481,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   double startYOff = displaySize.height / 2 * (lastPileCard.playedBy == 0 ? 1 : -1);
                   return Transform.translate(
                     offset: Offset(0, startYOff * (1 - animValue)),
-                    child: _pileCardWidget(lastPileCard, displaySize, animValue),
+                    child: _pileCardWidget(lastPileCard, displaySize, rotationFrac: animValue),
                   );
                 },
               ),
@@ -451,9 +503,89 @@ class _MyHomePageState extends State<MyHomePage> {
           },
         );
 
+      case AnimationMode.illegal_slap:
+        return Stack(children: [
+          if (penaltyCard != null) TweenAnimationBuilder(
+            tween: Tween(begin: 0.0, end: 1.0),
+            duration: illegalSlapAnimationDuration,
+            builder: (BuildContext context, double animValue, Widget child) {
+              double startYOff = displaySize.height / 2 * (penaltyCard.playedBy == 0 ? 1 : -1);
+              return Transform.translate(
+                offset: Offset(0, startYOff * (1 - animValue)),
+                child: _pileCardWidget(penaltyCard, displaySize, rotationFrac: animValue),
+              );
+            },
+          ),
+          Opacity(opacity: penaltyCard != null ? 0.25 : 1.0, child: Stack(
+              children: _pileCardWidgets(
+                  penaltyCard != null ? game.pileCards.sublist(1) : game.pileCards,
+                  displaySize),
+          )),
+          TweenAnimationBuilder(
+            tween: Tween(begin: 2.0, end: 0.0),
+            duration: illegalSlapAnimationDuration,
+            child: Center(child: Image(
+              image: AssetImage('assets/misc/no.png'),
+              alignment: Alignment.center,
+            )),
+            builder: (BuildContext context, double animValue, Widget child) {
+              return Opacity(
+                opacity: min(animValue, 1),
+                child: child,
+              );
+            },
+          )
+        ]);
+
       default:
-        return Container();
+        return SizedBox.shrink();
     }
+  }
+
+  Widget _noSlapWidget(final int playerIndex, final Size displaySize) {
+    int numTimeoutCards = game.slapTimeoutCardsForPlayer(playerIndex);
+    if (numTimeoutCards <= 0) {
+      return SizedBox.shrink();
+    }
+    final minDim = min(displaySize.width, displaySize.height);
+    final size = min(minDim * 0.2, 100.0);
+    // HERE: paw with no.png and timeout count.
+    final padding = 10.0;
+    return Positioned(
+      left: playerIndex == 0 ? padding : null,
+      bottom: playerIndex == 0 ? padding : null,
+      right: playerIndex == 0 ? null : padding,
+      top: playerIndex == 0 ? null : padding,
+      child: Transform.rotate(
+        angle: playerIndex == 1 ? pi : 0,
+        child: Stack(
+          children: [
+            SizedBox(
+                width: size,
+                height: size,
+                child: Image(image: AssetImage('assets/cats/paw${catImageNumbers[playerIndex]}.png'))),
+            SizedBox(
+                width: size,
+                height: size,
+                child: Image(image: AssetImage('assets/misc/no.png'))),
+            Padding(
+              padding: EdgeInsets.only(left: size * 0.6, top: size * 0.6),
+              child: SizedBox(
+                  width: size * 0.4,
+                  height: size * 0.4,
+                  child: FlatButton(
+                    color: Colors.white,
+                    textColor: Colors.blue,
+                    onPressed: () {},
+                    shape: CircleBorder(),
+                    child: Text(numTimeoutCards.toString(),
+                    style: TextStyle(fontSize: size / 5))),
+              ),
+            ),
+          ],
+        )
+      )
+    );
   }
 
   Widget _paddingAll(final double paddingPx, final Widget child) {
@@ -700,8 +832,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
     final makeRuleCheckboxRow = (String title, RuleVariation v) {
       return TableRow(children: [
-        Text(title, style: TextStyle(fontSize: baseFontSize)),
-        Checkbox(
+        // Text(title, style: TextStyle(fontSize: baseFontSize)),
+        CheckboxListTile(
+          dense: true,
+          title: Text(title, style: TextStyle(fontSize: baseFontSize)),
+          isThreeLine: false,
           onChanged: (bool checked) async {
             setState(() => game.rules.setVariationEnabled(v, checked));
             SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -714,9 +849,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
     final makeAiSpeedRow = () {
       final menuItemStyle = TextStyle(fontSize: baseFontSize * 0.9, fontWeight: FontWeight.normal);
-      return _paddingAll(0, Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Text('AI slap speed:', style: TextStyle(fontSize: baseFontSize)),
-        _paddingAll(10, DropdownButton(
+      return _paddingAll(0, ListTile(
+        title: Text('AI slap speed:', style: TextStyle(fontSize: baseFontSize)),
+        trailing: DropdownButton(
           value: aiSlapSpeed,
           onChanged: (AISlapSpeed value) async {
             setState(() => aiSlapSpeed = value);
@@ -730,7 +865,23 @@ class _MyHomePageState extends State<MyHomePage> {
             DropdownMenuItem(value: AISlapSpeed.fast, child: Text('Fast', style: menuItemStyle)),
           ],
         )),
-      ]));
+      );
+    };
+
+    final makePenaltyRadioOptionRow = (String label, BadSlapPenaltyType penalty) {
+      return TableRow(children: [
+        RadioListTile(
+          dense: true,
+          title: Text(label, style: TextStyle(fontSize: baseFontSize)),
+          groupValue: game.rules.badSlapPenalty,
+          value: penalty,
+          onChanged: (BadSlapPenaltyType p) async {
+            setState(() {game.rules.badSlapPenalty = p;});
+            SharedPreferences prefs = await SharedPreferences.getInstance();
+            prefs.setString(badSlapPenaltyPrefsKey, p.toString());
+          },
+        ),
+      ]);
     };
 
     return Container(
@@ -739,22 +890,43 @@ class _MyHomePageState extends State<MyHomePage> {
       child: Center(
         child: Dialog(
           backgroundColor: Color.fromARGB(0xd0, 0xc0, 0xc0, 0xc0),
+          insetPadding: EdgeInsets.all(0),
+          child: Padding(padding: EdgeInsets.all(0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               _paddingAll(10, Text('Preferences', style: TextStyle(fontSize: titleFontSize))),
-              makeAiSpeedRow(),
-              Table(
-                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                defaultColumnWidth: const IntrinsicColumnWidth(),
+
+              Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  makeRuleCheckboxRow('Tens are stoppers', RuleVariation.ten_is_stopper),
-                  makeRuleCheckboxRow('Slap on sandwiches', RuleVariation.slap_on_sandwich),
-                  makeRuleCheckboxRow('Slap on run of 3', RuleVariation.slap_on_run_of_3),
-                  makeRuleCheckboxRow(
-                      'Slap on 4 of same suit', RuleVariation.slap_on_same_suit_of_4),
+                  Table(
+                    defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                    defaultColumnWidth: const IntrinsicColumnWidth(),
+                    children: [
+                      TableRow(children: [makeAiSpeedRow()]),
+                      makeRuleCheckboxRow('Tens are stoppers', RuleVariation.ten_is_stopper),
+
+                      TableRow(children: [Container(height: 10)]),
+
+                      TableRow(children: [Text('Slap on:', style: TextStyle(fontSize: baseFontSize))]),
+                      makeRuleCheckboxRow('Sandwiches', RuleVariation.slap_on_sandwich),
+                      makeRuleCheckboxRow('Run of 3', RuleVariation.slap_on_run_of_3),
+                      makeRuleCheckboxRow(
+                          '4 of same suit', RuleVariation.slap_on_same_suit_of_4),
+
+                      TableRow(children: [Container(height: 10)]),
+
+                      TableRow(children: [Text('Penalty for wrong slap:', style: TextStyle(fontSize: baseFontSize))]),
+                      makePenaltyRadioOptionRow('None', BadSlapPenaltyType.none),
+                      makePenaltyRadioOptionRow('Penalty card', BadSlapPenaltyType.penalty_card),
+                      makePenaltyRadioOptionRow("Can't slap for next 5 cards", BadSlapPenaltyType.slap_timeout),
+                    ],
+                  ),
+
                 ],
               ),
+
               _paddingAll(10, Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [RaisedButton(
@@ -767,7 +939,7 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ),
       ),
-    );
+    ));
   }
 
   @override
@@ -792,9 +964,13 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
                 Expanded(
                   child:
-                    Container(
-                      child: _pileContent(game, displaySize),
-                    ),
+                    Stack(children: [
+                      Container(
+                        child: _pileContent(game, displaySize),
+                      ),
+                      _noSlapWidget(0, displaySize),
+                      _noSlapWidget(1, displaySize),
+                    ]),
                 ),
                 Container(
                   height: playerHeight,
