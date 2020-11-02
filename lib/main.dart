@@ -69,6 +69,17 @@ String prefsKeyForVariation(RuleVariation v) {
 final String aiSlapSpeedPrefsKey = 'ai_slap_speed';
 final String badSlapPenaltyPrefsKey = 'bad_slap_penalty';
 
+// https://docs.google.com/document/d/1yohSuYrvyya5V1hB6j9pJskavCdVq9sVeTqSoEPsWH0/edit#
+final ButtonStyle raisedButtonStyle = ElevatedButton.styleFrom(
+  onPrimary: Colors.black87,
+  primary: Colors.grey[300],
+  minimumSize: Size(88, 36),
+  padding: EdgeInsets.symmetric(horizontal: 16),
+  shape: const RoundedRectangleBorder(
+    borderRadius: BorderRadius.all(Radius.circular(2)),
+  ),
+);
+
 class _MyHomePageState extends State<MyHomePage> {
   Random rng = Random();
   Game game = Game();
@@ -348,9 +359,10 @@ class _MyHomePageState extends State<MyHomePage> {
       angle: (playerIndex == 1) ? pi : 0,
         child: Padding(
           padding: EdgeInsets.all(0.025 * displaySize.height),
-          child: RaisedButton(
+          child: ElevatedButton(
+            style: raisedButtonStyle,
             onPressed: enabled ? (() => _playCardIfPlayerTurn(playerIndex)) : null,
-          child: Padding(padding: EdgeInsets.all(10), child: Text (
+            child: Padding(padding: EdgeInsets.all(10), child: Text (
               'Play card: ${game.playerCards[playerIndex].length} left',
               style: TextStyle(
                 fontSize: Theme.of(context).textTheme.headline4.fontSize,
@@ -572,13 +584,15 @@ class _MyHomePageState extends State<MyHomePage> {
               child: SizedBox(
                   width: size * 0.4,
                   height: size * 0.4,
-                  child: FlatButton(
-                    color: Colors.white,
-                    textColor: Colors.blue,
+                  child: TextButton(
+                      style: TextButton.styleFrom(
+                        shape: CircleBorder(),
+                        primary: Colors.blue,
+                        backgroundColor: Colors.white,
+                      ),
                     onPressed: () {},
-                    shape: CircleBorder(),
                     child: Text(numTimeoutCards.toString(),
-                    style: TextStyle(fontSize: size / 5))),
+                    style: TextStyle(fontSize: size * 0.24))),
               ),
             ),
           ],
@@ -598,7 +612,8 @@ class _MyHomePageState extends State<MyHomePage> {
       return TableRow(children: [
         Padding(
           padding: EdgeInsets.all(8),
-          child: RaisedButton(
+          child: ElevatedButton(
+            style: raisedButtonStyle,
             onPressed: onPressed,
             child: Text(title),
           ),
@@ -651,7 +666,8 @@ class _MyHomePageState extends State<MyHomePage> {
             children: [
               _paddingAll(10, Row(
                 children: [Expanded(
-                  child: RaisedButton(
+                  child: ElevatedButton(
+                    style: raisedButtonStyle,
                     onPressed: _continueGame,
                     child: Text('Continue'),
                   ),
@@ -659,7 +675,8 @@ class _MyHomePageState extends State<MyHomePage> {
               )),
               _paddingAll(10, Row(
                 children: [Expanded(
-                  child: RaisedButton(
+                  child: ElevatedButton(
+                    style: raisedButtonStyle,
                     onPressed: _endGame,
                     child: Text('End Game'),
                   ),
@@ -697,7 +714,8 @@ class _MyHomePageState extends State<MyHomePage> {
               )),
               _paddingAll(10, Row(
                 children: [Expanded(
-                  child: RaisedButton(
+                  child: ElevatedButton(
+                    style: raisedButtonStyle,
                     onPressed: _startNewGame,
                     child: Text('Rematch'),
                   ),
@@ -705,7 +723,8 @@ class _MyHomePageState extends State<MyHomePage> {
               )),
               _paddingAll(10, Row(
                 children: [Expanded(
-                  child: RaisedButton(
+                  child: ElevatedButton(
+                    style: raisedButtonStyle,
                     onPressed: _endGame,
                     child: Text('Main menu'),
                   ),
@@ -927,11 +946,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
               _paddingAll(10, Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [RaisedButton(
-                    onPressed: _closePreferences,
-                    child: Text('OK'),
-                  ),
-                ],
+                children: [ElevatedButton(
+                  style: raisedButtonStyle,
+                  onPressed: _closePreferences,
+                  child: Text('OK'),
+                )],
               )),
             ],
           ),
