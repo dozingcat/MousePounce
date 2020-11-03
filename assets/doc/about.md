@@ -42,6 +42,9 @@ or decreasing rank are played, for example 8-7-6 or 9-10-jack. Aces can be high 
 "wrap around", so players can slap on king-ace-2.
 - **Slap on 4 of same suit**: If enabled, players can slap the pile when 4 cards of the same suit
 suit are played.
+- **Penalty for wrong slap**: Allows you to choose the penalty if a player slaps incorrectly.
+"Penalty card" causes the offending player to put a card on the bottom of the current pile.
+"Can't slap for next 5 cards" prevents the player from slapping until 5 additional cards are played.
 
 ## License
 
@@ -52,5 +55,6 @@ available [here](https://github.com/dozingcat/MousePounce).
 
 - Cats and paws by [AnnaliseArt on Pixabay](https://pixabay.com/illustrations/cats-hanging-cats-kitty-cat-paw-3611310/)
 - Thought bubble by [OpenClipart-Vectors on Pixabay](https://pixabay.com/vectors/balloon-bubble-speech-thought-150981/)
+- "No" symbol by [OpenClipart-Vectors on Pixabay](https://pixabay.com/vectors/unauthorised-denied-ban-prohibition-156169/)
 - Cat emojis from [Noto Emoji by Google](https://github.com/googlefonts/noto-emoji/)
 - [Playing card images](https://code.google.com/archive/p/vector-playing-cards/)

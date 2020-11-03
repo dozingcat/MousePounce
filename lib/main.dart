@@ -580,10 +580,10 @@ class _MyHomePageState extends State<MyHomePage> {
                 height: size,
                 child: Image(image: AssetImage('assets/misc/no.png'))),
             Padding(
-              padding: EdgeInsets.only(left: size * 0.6, top: size * 0.6),
+              padding: EdgeInsets.only(left: size * 0.55, top: size * 0.55),
               child: SizedBox(
-                  width: size * 0.4,
-                  height: size * 0.4,
+                  width: size * 0.45,
+                  height: size * 0.45,
                   child: TextButton(
                       style: TextButton.styleFrom(
                         shape: CircleBorder(),
@@ -831,13 +831,13 @@ class _MyHomePageState extends State<MyHomePage> {
     showAboutDialog(
         context: context,
         applicationName: 'Egyptian Mouse Pounce',
-        applicationVersion: '1.0.0',
+        applicationVersion: '1.1.0',
         applicationLegalese: '© 2020 Brian Nenninger',
         children: [
           Container(height: 15),
           MarkdownBody(
             data: aboutText,
-            onTapLink: (url) => launch(url),
+            onTapLink: (text, href, title) => launch(href),
           ),
         ],
     );
