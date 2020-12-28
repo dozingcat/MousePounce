@@ -13,7 +13,7 @@ import 'package:mouse_pounce/main.dart';
 void main() {
   testWidgets('Main menu smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(MyApp());
+    await tester.pumpWidget(EmpApp());
 
     // Verify that buttons are shown in the main menu.
     expect(find.byType(RaisedButton), findsNWidgets(5));
