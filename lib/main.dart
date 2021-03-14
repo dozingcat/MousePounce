@@ -30,7 +30,7 @@ class MyApp extends StatelessWidget {
 }
 
 class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key}) : super(key: key);
+  MyHomePage({Key? key}) : super(key: key);
 
   @override
   _MyHomePageState createState() => _MyHomePageState();
@@ -86,12 +86,12 @@ class _MyHomePageState extends State<MyHomePage> {
   AnimationMode animationMode = AnimationMode.none;
   AIMode aiMode = AIMode.ai_vs_ai;
   DialogMode dialogMode = DialogMode.main_menu;
-  int pileMovingToPlayer;
-  PileCard penaltyCard;
+  int? pileMovingToPlayer;
+  PileCard? penaltyCard;
   bool penaltyCardPlayed = false;
-  int aiSlapPlayerIndex;
+  int? aiSlapPlayerIndex;
   int aiSlapCounter = 0;
-  List<int> catImageNumbers;
+  late List<int> catImageNumbers;
   List<AIMood> aiMoods = [AIMood.none, AIMood.none];
   int aiMoodCounter = 0;
   AISlapSpeed aiSlapSpeed = AISlapSpeed.medium;
@@ -255,7 +255,7 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _aiHasMoodForPile(final List<PileCard> pileCards) {
     int total = 0;
     for (PileCard pc in pileCards) {
-      int cval = moodWeights.containsKey(pc.card.rank) ? moodWeights[pc.card.rank] : 1;
+      int cval = moodWeights.containsKey(pc.card.rank) ? moodWeights[pc.card.rank]! : 1;
       total += cval;
     }
     return total > 16;
@@ -274,9 +274,9 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _movePileToWinner() {
-    _updateAiMoodsForPile(game.pileCards, pileMovingToPlayer);
-    game.movePileToPlayer(pileMovingToPlayer);
-    int winner = game.gameWinner();
+    _updateAiMoodsForPile(game.pileCards, pileMovingToPlayer!);
+    game.movePileToPlayer(pileMovingToPlayer!);
+    int? winner = game.gameWinner();
     if (winner != null) {
       _updateAiMoodsForGameWinner(winner);
       if (aiMode == AIMode.ai_vs_ai) {
@@ -365,7 +365,7 @@ class _MyHomePageState extends State<MyHomePage> {
             child: Padding(padding: EdgeInsets.all(10), child: Text (
               'Play card: ${game.playerCards[playerIndex].length} left',
               style: TextStyle(
-                fontSize: Theme.of(context).textTheme.headline4.fontSize,
+                fontSize: Theme.of(context).textTheme.headline4!.fontSize,
                 color: enabled ? Colors.green : Colors.grey,
               )
           )),
@@ -476,7 +476,7 @@ class _MyHomePageState extends State<MyHomePage> {
         return Stack(children: [
           ..._pileCardWidgets(game.pileCards, displaySize),
           Center(child: Image(
-              image: AssetImage('assets/cats/paw${catImageNumbers[aiSlapPlayerIndex]}.png'),
+              image: AssetImage('assets/cats/paw${catImageNumbers[aiSlapPlayerIndex!]}.png'),
               alignment: Alignment.center,
           )),
         ]);
@@ -489,7 +489,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 tween: Tween(begin: 0.0, end: 1.0),
                 duration: Duration(milliseconds: 200),
                 onEnd: () => setState(_playCardFinished),
-                builder: (BuildContext context, double animValue, Widget child) {
+                builder: (BuildContext context, double animValue, Widget? child) {
                   double startYOff = displaySize.height / 2 * (lastPileCard.playedBy == 0 ? 1 : -1);
                   return Transform.translate(
                     offset: Offset(0, startYOff * (1 - animValue)),
@@ -507,7 +507,7 @@ class _MyHomePageState extends State<MyHomePage> {
           duration: Duration(milliseconds: 300),
           onEnd: () => setState(_movePileToWinner),
           child: Stack(children: _pileCardWidgets(game.pileCards, displaySize)),
-          builder: (BuildContext context, double animValue, Widget child) {
+          builder: (BuildContext context, double animValue, Widget? child) {
             return Transform.translate(
               offset: Offset(0, endYOff * animValue),
               child: child,
@@ -516,15 +516,16 @@ class _MyHomePageState extends State<MyHomePage> {
         );
 
       case AnimationMode.illegal_slap:
+        final pc = this.penaltyCard;
         return Stack(children: [
-          if (penaltyCard != null) TweenAnimationBuilder(
+          if (pc != null) TweenAnimationBuilder(
             tween: Tween(begin: 0.0, end: 1.0),
             duration: illegalSlapAnimationDuration,
-            builder: (BuildContext context, double animValue, Widget child) {
-              double startYOff = displaySize.height / 2 * (penaltyCard.playedBy == 0 ? 1 : -1);
+            builder: (BuildContext context, double animValue, Widget? child) {
+              double startYOff = displaySize.height / 2 * (pc.playedBy == 0 ? 1 : -1);
               return Transform.translate(
                 offset: Offset(0, startYOff * (1 - animValue)),
-                child: _pileCardWidget(penaltyCard, displaySize, rotationFrac: animValue),
+                child: _pileCardWidget(pc, displaySize, rotationFrac: animValue),
               );
             },
           ),
@@ -540,7 +541,7 @@ class _MyHomePageState extends State<MyHomePage> {
               image: AssetImage('assets/misc/no.png'),
               alignment: Alignment.center,
             )),
-            builder: (BuildContext context, double animValue, Widget child) {
+            builder: (BuildContext context, double animValue, Widget? child) {
               return Opacity(
                 opacity: min(animValue, 1),
                 child: child,
@@ -608,7 +609,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget _mainMenuDialog(final BuildContext context, final Size displaySize) {
     final minDim = min(displaySize.width, displaySize.height);
 
-    final makeButtonRow = (String title, Function onPressed) {
+    final makeButtonRow = (String title, void Function() onPressed) {
       return TableRow(children: [
         Padding(
           padding: EdgeInsets.all(8),
@@ -837,7 +838,7 @@ class _MyHomePageState extends State<MyHomePage> {
           Container(height: 15),
           MarkdownBody(
             data: aboutText,
-            onTapLink: (text, href, title) => launch(href),
+            onTapLink: (text, href, title) => launch(href!),
           ),
         ],
     );
@@ -854,10 +855,10 @@ class _MyHomePageState extends State<MyHomePage> {
           dense: true,
           title: Text(title, style: TextStyle(fontSize: baseFontSize)),
           isThreeLine: false,
-          onChanged: (bool checked) async {
-            setState(() => game.rules.setVariationEnabled(v, checked));
+          onChanged: (bool? checked) async {
+            setState(() => game.rules.setVariationEnabled(v, checked == true));
             SharedPreferences prefs = await SharedPreferences.getInstance();
-            prefs.setBool(prefsKeyForVariation(v), checked);
+            prefs.setBool(prefsKeyForVariation(v), checked == true);
           },
           value: game.rules.isVariationEnabled(v),
         )
@@ -870,8 +871,8 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text('AI slap speed:', style: TextStyle(fontSize: baseFontSize)),
         trailing: DropdownButton(
           value: aiSlapSpeed,
-          onChanged: (AISlapSpeed value) async {
-            setState(() => aiSlapSpeed = value);
+          onChanged: (AISlapSpeed? value) async {
+            setState(() => aiSlapSpeed = value!);
             SharedPreferences prefs = await SharedPreferences.getInstance();
             prefs.setString(aiSlapSpeedPrefsKey, value.toString());
           },
@@ -892,8 +893,8 @@ class _MyHomePageState extends State<MyHomePage> {
           title: Text(label, style: TextStyle(fontSize: baseFontSize)),
           groupValue: game.rules.badSlapPenalty,
           value: penalty,
-          onChanged: (BadSlapPenaltyType p) async {
-            setState(() {game.rules.badSlapPenalty = p;});
+          onChanged: (BadSlapPenaltyType? p) async {
+            setState(() {game.rules.badSlapPenalty = p!;});
             SharedPreferences prefs = await SharedPreferences.getInstance();
             prefs.setString(badSlapPenaltyPrefsKey, p.toString());
           },
