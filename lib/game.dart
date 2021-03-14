@@ -92,19 +92,19 @@ class GameRules {
 }
 
 class Game {
-  GameRules rules;
-  Random rng;
-  List<List<PlayingCard>> playerCards;
-  List<PileCard> pileCards;
+  late GameRules rules;
+  late Random rng;
+  List<List<PlayingCard>> playerCards = [];
+  List<PileCard> pileCards = [];
   // Penalty cards go at the bottom of the pile, and don't count for slaps.
-  int numPenaltyCardsInPile;
-  int currentPlayerIndex;
-  int numChallengeChances;
-  int challengeChanceOwner;
-  int challengeChanceWinner;
-  List<int> slapTimeoutCardsRemaining;
+  int numPenaltyCardsInPile = 0;
+  int currentPlayerIndex = 0;
+  int? numChallengeChances;
+  int? challengeChanceOwner;
+  int? challengeChanceWinner;
+  List<int> slapTimeoutCardsRemaining = [];
 
-  Game({Random rng, GameRules rules}) {
+  Game({Random? rng, GameRules? rules}) {
     this.rng = rng ?? Random();
     this.rules = rules ?? GameRules();
     startGame();
@@ -177,8 +177,8 @@ class Game {
       _moveToNextPlayer();
     }
     else {
-      --numChallengeChances;
-      if (numChallengeChances <= 0) {
+      numChallengeChances = numChallengeChances! - 1;
+      if (numChallengeChances! <= 0) {
         challengeChanceWinner = challengeChanceOwner;
       }
       if (hand.isEmpty) {
@@ -191,7 +191,7 @@ class Game {
     }
   }
 
-  PileCard addPenaltyCard(final int playerIndex) {
+  PileCard? addPenaltyCard(final int playerIndex) {
     var hand = playerCards[playerIndex];
     if (hand.isNotEmpty) {
       var card = hand.removeAt(0);
@@ -260,11 +260,11 @@ class Game {
     slapTimeoutCardsRemaining[playerIndex] = cards;
   }
 
-  int gameWinner() {
+  int? gameWinner() {
     if (pileCards.isNotEmpty) {
       return null;
     }
-    int potentialWinner = null;
+    int? potentialWinner;
     for (int i = 0; i < playerCards.length; i++) {
       if (playerCards[i].isNotEmpty) {
         if (potentialWinner != null) {
