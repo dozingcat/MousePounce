@@ -832,8 +832,8 @@ class _MyHomePageState extends State<MyHomePage> {
     showAboutDialog(
         context: context,
         applicationName: 'Egyptian Mouse Pounce',
-        applicationVersion: '1.1.0',
-        applicationLegalese: '© 2020 Brian Nenninger',
+        applicationVersion: '1.1.1',
+        applicationLegalese: '© 2020-2021 Brian Nenninger',
         children: [
           Container(height: 15),
           MarkdownBody(
