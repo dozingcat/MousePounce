@@ -839,6 +839,8 @@ class _MyHomePageState extends State<MyHomePage> {
           MarkdownBody(
             data: aboutText,
             onTapLink: (text, href, title) => launch(href!),
+            // https://github.com/flutter/flutter_markdown/issues/311
+            listItemCrossAxisAlignment: MarkdownListItemCrossAxisAlignment.start,
           ),
         ],
     );
