@@ -300,7 +300,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (animationMode != AnimationMode.none) {
       return;
     }
-    if (game.currentPlayerIndex == pnum) {
+    if (game.canPlayCard(pnum)) {
       setState(_playCard);
     }
   }
@@ -354,7 +354,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget _playerStatusWidget(final Game game, final int playerIndex, final Size displaySize) {
-    final enabled = game.currentPlayerIndex == playerIndex;
+    final enabled = game.canPlayCard(playerIndex);
     return Transform.rotate(
       angle: (playerIndex == 1) ? pi : 0,
         child: Padding(
