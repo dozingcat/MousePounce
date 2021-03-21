@@ -1,0 +1,2 @@
+- Fixed UI and animation bugs.
+- Upgraded to Dart null safety.
