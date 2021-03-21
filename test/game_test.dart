@@ -24,6 +24,8 @@ void main() {
     expect(game.playerCards[1].length, 26);
     expect(game.pileCards.length, 0);
     expect(game.currentPlayerIndex, 0);
+    expect(game.canPlayCard(0), true);
+    expect(game.canPlayCard(1), false);
   });
 
   test('handles face cards', () {
@@ -39,12 +41,16 @@ void main() {
     for (var i = 0; i < 7; i++) {
       game.playCard();
       expect(game.challengeChanceWinner, null);
+      expect(game.canPlayCard(game.currentPlayerIndex), true);
+      expect(game.canPlayCard(1 - game.currentPlayerIndex), false);
     }
 
     expect(game.currentPlayerIndex, 0);
     game.playCard();
     expect(game.pileCards.map((pc) => pc.card.asciiString()).join(' '), '4S 7D KH 7C 2D QC TD 2S');
     expect(game.challengeChanceWinner, 1);
+    expect(game.canPlayCard(0), false);
+    expect(game.canPlayCard(1), false);
 
     game.movePileToPlayer(1);
     expect(game.playerCards[0].map((c) => c.asciiString()).join(' '), 'AS');

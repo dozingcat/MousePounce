@@ -154,8 +154,12 @@ class Game {
     currentPlayerIndex = newPlayer;
   }
 
+  bool canPlayCard(final int playerIndex) {
+    return this.currentPlayerIndex == playerIndex && this.challengeChanceWinner == null;
+  }
+
   void playCard() {
-    if (challengeChanceWinner != null) {
+    if (!canPlayCard(this.currentPlayerIndex)) {
       return;
     }
     var hand = playerCards[currentPlayerIndex];
