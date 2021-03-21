@@ -971,18 +971,43 @@ class _MyHomePageState extends State<MyHomePage> {
       body: Center(
         child: Stack(
           children: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+            // Use a stack with the card pile last so that the cards will draw
+            // over the player areas when they're animating in.
+            Stack(
               children: [
-                Container(
+                Positioned(
+                  left: 0,
+                  width: displaySize.width,
+                  top: 0,
                   height: playerHeight,
-                  width: double.infinity,
-                  color: Colors.white70,
-                  child: aiMode == AIMode.human_vs_human ?
-                    _playerStatusWidget(game, 1, displaySize) :
-                    _aiPlayerWidget(game, 1, displaySize)
+                  child: Container(
+                    height: playerHeight,
+                    width: double.infinity,
+                    color: Colors.white70,
+                    child: aiMode == AIMode.human_vs_human ?
+                      _playerStatusWidget(game, 1, displaySize) :
+                      _aiPlayerWidget(game, 1, displaySize)
+                  ),
                 ),
-                Expanded(
+                Positioned(
+                  left: 0,
+                  width: displaySize.width,
+                  top: displaySize.height - playerHeight,
+                  height: playerHeight,
+                  child: Container(
+                      height: playerHeight,
+                      width: double.infinity,
+                      color: Colors.white70,
+                      child: aiMode == AIMode.ai_vs_ai ?
+                      _aiPlayerWidget(game, 0, displaySize) :
+                      _playerStatusWidget(game, 0, displaySize)
+                  ),
+                ),
+                Positioned(
+                  left: 0,
+                  width: displaySize.width,
+                  top: playerHeight,
+                  height: displaySize.height - 2 * playerHeight,
                   child:
                     Stack(children: [
                       Container(
@@ -991,14 +1016,6 @@ class _MyHomePageState extends State<MyHomePage> {
                       _noSlapWidget(0, displaySize),
                       _noSlapWidget(1, displaySize),
                     ]),
-                ),
-                Container(
-                  height: playerHeight,
-                  width: double.infinity,
-                  color: Colors.white70,
-                  child: aiMode == AIMode.ai_vs_ai ?
-                        _aiPlayerWidget(game, 0, displaySize) :
-                        _playerStatusWidget(game, 0, displaySize)
                 ),
               ],
             ),
