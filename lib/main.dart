@@ -158,7 +158,7 @@ class _MyHomePageState extends State<MyHomePage> {
       penaltyCardPlayed = false;
     });
   }
-  
+
   bool _shouldAiPlayCard() {
     if (game.gameWinner() != null) {
       return false;
@@ -934,6 +934,8 @@ class _MyHomePageState extends State<MyHomePage> {
                       makeRuleCheckboxRow('Run of 3', RuleVariation.slap_on_run_of_3),
                       makeRuleCheckboxRow(
                           '4 of same suit', RuleVariation.slap_on_same_suit_of_4),
+                      makeRuleCheckboxRow(
+                          'Adds to 10', RuleVariation.slap_on_add_to_10),
 
                       TableRow(children: [Container(height: 10)]),
 

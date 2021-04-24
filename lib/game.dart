@@ -67,6 +67,7 @@ enum RuleVariation {
   slap_on_sandwich,
   slap_on_run_of_3,
   slap_on_same_suit_of_4,
+  slap_on_add_to_10
 }
 
 // Penalty options for incorrect slaps.
@@ -245,6 +246,13 @@ class Game {
         return true;
       }
       if ((r2 == (r3 + 1) % numRanks) && r1 == (r3 + 2) % numRanks) {
+        return true;
+      }
+    }
+    if (rules.isVariationEnabled(RuleVariation.slap_on_add_to_10) && ps >= 2) {
+      final r1 = pileCards[ps - 1].card.rank.index + 2;
+      final r2 = pileCards[ps - 2].card.rank.index + 2;
+      if (r1 + r2 == 10) {
         return true;
       }
     }
