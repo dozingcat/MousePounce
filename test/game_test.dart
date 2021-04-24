@@ -177,4 +177,35 @@ void main() {
       expect(game.canSlapPile(), slapIndices.contains(i), reason: 'Wrong at index $i');
     }
   });
+
+  test('handles sum to 10', () {
+    final game = Game();
+    game.rules.setVariationEnabled(RuleVariation.slap_on_add_to_10, true);
+    game.playerCards = [
+      cards('TS 6S AH 5S 3S 2H'),
+      cards('6D TD 9C 2C 8S KS'),
+    ];
+
+    // Play should go TS-6D-4S(*)-TD-AH-9C-2C-8S(*)-KS-5S-3S-2H.
+    final slapIndices = {2, 7};
+    for (var i = 0; i < 12; i++) {
+      game.playCard();
+      expect(game.canSlapPile(), slapIndices.contains(i), reason: 'Wrong at index $i');
+    }
+  });
+
+  test('ignores sum to 10 if disabled', ()
+  {
+    final game = Game();
+    game.rules.setVariationEnabled(RuleVariation.slap_on_add_to_10, false);
+    game.playerCards = [
+      cards('TS 4S AH 5S 3S 2H'),
+      cards('6D TD 9C 2C 8S KS'),
+    ];
+
+    for (var i = 0; i < 12; i++) {
+      game.playCard();
+      expect(game.canSlapPile(), false, reason: 'Wrong at index $i');
+    }
+  });
 }
