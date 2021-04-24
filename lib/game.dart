@@ -3,21 +3,25 @@ import 'dart:math';
 enum Suit {clubs, diamonds, hearts, spades}
 
 extension SuitExtension on Suit {
-  get asciiChar {
+  String get asciiChar {
     switch (this) {
       case Suit.clubs: return 'C';
       case Suit.diamonds: return 'D';
       case Suit.hearts: return 'H';
       case Suit.spades: return 'S';
     }
-    throw AssertionError("Unrecognized suit");
   }
 }
 
 enum Rank {two, three, four, five, six, seven, eight, nine, ten, jack, queen, king, ace}
 
 extension RankExtension on Rank {
-  get asciiChar {
+  // Returns number for non-face card, or jack=11, queen=12, king=13, ace=14.
+  int get numericValue {
+    return this.index + 2;
+  }
+
+  String get asciiChar {
     switch (this) {
       case Rank.ace: return 'A';
       case Rank.king: return 'K';
@@ -25,7 +29,7 @@ extension RankExtension on Rank {
       case Rank.jack: return 'J';
       case Rank.ten: return 'T';
       default:
-        return (this.index + 2).toString();
+        return this.numericValue.toString();
     }
   }
 }
@@ -67,7 +71,7 @@ enum RuleVariation {
   slap_on_sandwich,
   slap_on_run_of_3,
   slap_on_same_suit_of_4,
-  slap_on_add_to_10
+  slap_on_add_to_10,
 }
 
 // Penalty options for incorrect slaps.
@@ -250,8 +254,8 @@ class Game {
       }
     }
     if (rules.isVariationEnabled(RuleVariation.slap_on_add_to_10) && ps >= 2) {
-      final r1 = pileCards[ps - 1].card.rank.index + 2;
-      final r2 = pileCards[ps - 2].card.rank.index + 2;
+      final r1 = pileCards[ps - 1].card.rank.numericValue;
+      final r2 = pileCards[ps - 2].card.rank.numericValue;
       if (r1 + r2 == 10) {
         return true;
       }
