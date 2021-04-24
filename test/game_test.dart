@@ -194,8 +194,7 @@ void main() {
     }
   });
 
-  test('ignores sum to 10 if disabled', ()
-  {
+  test('ignores sum to 10 if disabled', () {
     final game = Game();
     game.rules.setVariationEnabled(RuleVariation.slap_on_add_to_10, false);
     game.playerCards = [
