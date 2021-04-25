@@ -959,6 +959,8 @@ class _MyHomePageState extends State<MyHomePage> {
                           '4 of same suit', RuleVariation.slap_on_same_suit_of_4, 0.85),
                       makeRuleCheckboxRow(
                           'Adds to 10', RuleVariation.slap_on_add_to_10, 0.85),
+                      makeRuleCheckboxRow('Marriages', RuleVariation.slap_on_marriage, 0.85),
+                      makeRuleCheckboxRow('Divorces', RuleVariation.slap_on_divorce, 0.85),
 
                       TableRow(children: [Container(height: baseFontSize * 0.25)]),
 
