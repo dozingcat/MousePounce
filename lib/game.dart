@@ -72,6 +72,8 @@ enum RuleVariation {
   slap_on_run_of_3,
   slap_on_same_suit_of_4,
   slap_on_add_to_10,
+  slap_on_marriage,
+  slap_on_divorce,
 }
 
 // Penalty options for incorrect slaps.
@@ -257,6 +259,20 @@ class Game {
       final r1 = pileCards[ps - 1].card.rank.numericValue;
       final r2 = pileCards[ps - 2].card.rank.numericValue;
       if (r1 + r2 == 10) {
+        return true;
+      }
+    }
+    if (rules.isVariationEnabled(RuleVariation.slap_on_marriage) && ps >= 2) {
+      final r1 = pileCards[ps - 1].card.rank;
+      final r2 = pileCards[ps - 2].card.rank;
+      if ((r1 == Rank.king && r2 == Rank.queen) || (r1 == Rank.queen && r2 == Rank.king)) {
+        return true;
+      }
+    }
+    if (rules.isVariationEnabled(RuleVariation.slap_on_divorce) && ps >= 3) {
+      final r1 = pileCards[ps - 1].card.rank;
+      final r3 = pileCards[ps - 3].card.rank;
+      if ((r1 == Rank.king && r3 == Rank.queen) || (r1 == Rank.queen && r3 == Rank.king)) {
         return true;
       }
     }

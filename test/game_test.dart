@@ -207,4 +207,35 @@ void main() {
       expect(game.canSlapPile(), false, reason: 'Wrong at index $i');
     }
   });
+
+  test('handles marriage slaps', () {
+    final game = Game();
+    game.rules.setVariationEnabled(RuleVariation.slap_on_marriage, true);
+    game.playerCards = [
+      cards('4S QH QD KC 6S'),
+      cards('KD 8C KH QS 4S'),
+    ];
+
+    // Play should go 4S-KD-QH(*)-8C-QD-KH(*)-KC(pair)-QS(*).
+    final slapIndices = {2, 5, 6, 7};
+    for (var i = 0; i < 8; i++) {
+      game.playCard();
+      expect(game.canSlapPile(), slapIndices.contains(i), reason: 'Wrong at index $i');
+    }
+  });
+
+  test('handles divorce slaps', () {
+    final game = Game();
+    game.rules.setVariationEnabled(RuleVariation.slap_on_divorce, true);
+    game.playerCards = [
+      cards('KS 4H KD 6C QS 6D'),
+      cards('7D QC 8H KH 4S KC'),
+    ];
+    // Play should go KS-7D-QC(*)-4H-KD(*)-8H-KH-6C-QS(*)-4S-KC(*)
+    final slapIndices = {2, 4, 8, 10};
+    for (var i = 0; i < 11; i++) {
+      game.playCard();
+      expect(game.canSlapPile(), slapIndices.contains(i), reason: 'Wrong at index $i');
+    }
+  });
 }
