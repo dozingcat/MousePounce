@@ -80,8 +80,11 @@ final ButtonStyle raisedButtonStyle = ElevatedButton.styleFrom(
   ),
 );
 
+final dialogBackgroundColor = Color.fromARGB(0xd0, 0xd8, 0xd8, 0xd8);
+
 class _MyHomePageState extends State<MyHomePage> {
   Random rng = Random();
+  late final SharedPreferences preferences;
   Game game = Game();
   AnimationMode animationMode = AnimationMode.none;
   AIMode aiMode = AIMode.ai_vs_ai;
@@ -111,17 +114,17 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _readPreferencesAndStartGame() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    this.preferences = await SharedPreferences.getInstance();
     for (var v in RuleVariation.values) {
-      bool enabled = prefs.getBool(prefsKeyForVariation(v)) ?? false;
+      bool enabled = this.preferences.getBool(prefsKeyForVariation(v)) ?? false;
       game.rules.setVariationEnabled(v, enabled);
     }
 
-    final speedStr = prefs.getString(aiSlapSpeedPrefsKey) ?? '';
+    final speedStr = this.preferences.getString(aiSlapSpeedPrefsKey) ?? '';
     aiSlapSpeed = AISlapSpeed.values.firstWhere(
         (s) => s.toString() == speedStr, orElse: () => AISlapSpeed.medium);
 
-    final penaltyStr = prefs.getString(badSlapPenaltyPrefsKey) ?? '';
+    final penaltyStr = this.preferences.getString(badSlapPenaltyPrefsKey) ?? '';
     game.rules.badSlapPenalty = BadSlapPenaltyType.values.firstWhere(
         (s) => s.toString() == penaltyStr, orElse: () => BadSlapPenaltyType.none);
 
@@ -341,6 +344,10 @@ class _MyHomePageState extends State<MyHomePage> {
           break;
         case BadSlapPenaltyType.slap_timeout:
           game.setSlapTimeoutCardsForPlayer(5, playerIndex);
+          break;
+        case BadSlapPenaltyType.opponent_wins_pile:
+          break;
+        default:
           break;
       }
     });
@@ -627,7 +634,7 @@ class _MyHomePageState extends State<MyHomePage> {
         height: double.infinity,
         child: Center(
           child: Dialog(
-            backgroundColor: Color.fromARGB(0xa0, 0xc0, 0xc0, 0xc0),
+            backgroundColor: dialogBackgroundColor,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -661,7 +668,7 @@ class _MyHomePageState extends State<MyHomePage> {
         height: double.infinity,
         child: Center(
           child: Dialog(
-          backgroundColor: Color.fromARGB(0xa0, 0xc0, 0xc0, 0xc0),
+          backgroundColor: dialogBackgroundColor,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -703,7 +710,7 @@ class _MyHomePageState extends State<MyHomePage> {
       height: double.infinity,
       child: Center(
         child: Dialog(
-          backgroundColor: Color.fromARGB(0xa0, 0xc0, 0xc0, 0xc0),
+          backgroundColor: dialogBackgroundColor,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -847,20 +854,20 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget _preferencesDialog(final Size displaySize) {
-    final minDim = min(displaySize.width, displaySize.height);
-    final titleFontSize = min(36.0, minDim / 15.0);
-    final baseFontSize = min(24.0, minDim / 18.0);
+    final minDim = displaySize.shortestSide;
+    final maxDim = displaySize.longestSide;
+    final titleFontSize = min(maxDim / 32.0, minDim / 18.0);
+    final baseFontSize = min(maxDim / 36.0, minDim / 20.0);
 
-    final makeRuleCheckboxRow = (String title, RuleVariation v) {
+    final makeRuleCheckboxRow = (String title, RuleVariation v, [double fontScale = 1.0]) {
       return TableRow(children: [
         CheckboxListTile(
           dense: true,
-          title: Text(title, style: TextStyle(fontSize: baseFontSize)),
+          title: Text(title, style: TextStyle(fontSize: baseFontSize * fontScale)),
           isThreeLine: false,
-          onChanged: (bool? checked) async {
+          onChanged: (bool? checked) {
             setState(() => game.rules.setVariationEnabled(v, checked == true));
-            SharedPreferences prefs = await SharedPreferences.getInstance();
-            prefs.setBool(prefsKeyForVariation(v), checked == true);
+            this.preferences.setBool(prefsKeyForVariation(v), checked == true);
           },
           value: game.rules.isVariationEnabled(v),
         )
@@ -868,15 +875,14 @@ class _MyHomePageState extends State<MyHomePage> {
     };
 
     final makeAiSpeedRow = () {
-      final menuItemStyle = TextStyle(fontSize: baseFontSize * 0.9, fontWeight: FontWeight.normal);
+      final menuItemStyle = TextStyle(fontSize: baseFontSize * 0.9, color: Colors.blue);
       return _paddingAll(0, ListTile(
-        title: Text('AI slap speed:', style: TextStyle(fontSize: baseFontSize)),
+        title: Text('Cat slap speed:', style: TextStyle(fontSize: baseFontSize)),
         trailing: DropdownButton(
           value: aiSlapSpeed,
-          onChanged: (AISlapSpeed? value) async {
+          onChanged: (AISlapSpeed? value) {
             setState(() => aiSlapSpeed = value!);
-            SharedPreferences prefs = await SharedPreferences.getInstance();
-            prefs.setString(aiSlapSpeedPrefsKey, value.toString());
+            this.preferences.setString(aiSlapSpeedPrefsKey, value.toString());
           },
           items: [
             DropdownMenuItem(value: AISlapSpeed.slow, child: Text('Slow', style: menuItemStyle)),
@@ -888,11 +894,29 @@ class _MyHomePageState extends State<MyHomePage> {
       );
     };
 
+    final makeSlapPenaltyRow = () {
+      final menuItemStyle = TextStyle(fontSize: baseFontSize * 0.9, color: Colors.blue);
+      return DropdownButton(
+            value: game.rules.badSlapPenalty,
+            onChanged: (BadSlapPenaltyType? p) {
+              setState(() => game.rules.badSlapPenalty = p!);
+              this.preferences.setString(badSlapPenaltyPrefsKey, p.toString());
+            },
+            items: [
+              DropdownMenuItem(value: BadSlapPenaltyType.none, child: Text('None', style: menuItemStyle)),
+              DropdownMenuItem(
+                  value: BadSlapPenaltyType.penalty_card, child: Text('Penalty card', style: menuItemStyle)),
+              DropdownMenuItem(value: BadSlapPenaltyType.slap_timeout, child: Text("Can't slap for next 5 cards", style: menuItemStyle)),
+              DropdownMenuItem(value: BadSlapPenaltyType.opponent_wins_pile, child: Text('Opponent wins pile', style: menuItemStyle)),
+            ],
+          );
+    };
+
     final makePenaltyRadioOptionRow = (String label, BadSlapPenaltyType penalty) {
       return TableRow(children: [
         RadioListTile(
           dense: true,
-          title: Text(label, style: TextStyle(fontSize: baseFontSize)),
+          title: Text(label, style: TextStyle(fontSize: baseFontSize * 0.85)),
           groupValue: game.rules.badSlapPenalty,
           value: penalty,
           onChanged: (BadSlapPenaltyType? p) async {
@@ -909,54 +933,52 @@ class _MyHomePageState extends State<MyHomePage> {
       height: double.infinity,
       child: Center(
         child: Dialog(
-          backgroundColor: Color.fromARGB(0xd0, 0xc0, 0xc0, 0xc0),
-          insetPadding: EdgeInsets.all(0),
-          child: Padding(padding: EdgeInsets.all(0),
+          backgroundColor: dialogBackgroundColor,
+          child: Padding(padding: EdgeInsets.all(minDim * 0.03),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _paddingAll(10, Text('Preferences', style: TextStyle(fontSize: titleFontSize))),
+             Text('Preferences', style: TextStyle(fontSize: titleFontSize)),
 
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Table(
                     defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                    defaultColumnWidth: const IntrinsicColumnWidth(),
+                    defaultColumnWidth: FixedColumnWidth(minDim * 0.8),
                     children: [
                       TableRow(children: [makeAiSpeedRow()]),
+                      TableRow(children: [Container(height: baseFontSize * 0.15)]),
                       makeRuleCheckboxRow('Tens are stoppers', RuleVariation.ten_is_stopper),
-
-                      TableRow(children: [Container(height: 10)]),
+                      TableRow(children: [Container(height: baseFontSize * 0.25)]),
 
                       TableRow(children: [Text('Slap on:', style: TextStyle(fontSize: baseFontSize))]),
-                      makeRuleCheckboxRow('Sandwiches', RuleVariation.slap_on_sandwich),
-                      makeRuleCheckboxRow('Run of 3', RuleVariation.slap_on_run_of_3),
+                      makeRuleCheckboxRow('Sandwiches', RuleVariation.slap_on_sandwich, 0.85),
+                      makeRuleCheckboxRow('Run of 3', RuleVariation.slap_on_run_of_3, 0.85),
                       makeRuleCheckboxRow(
-                          '4 of same suit', RuleVariation.slap_on_same_suit_of_4),
+                          '4 of same suit', RuleVariation.slap_on_same_suit_of_4, 0.85),
                       makeRuleCheckboxRow(
-                          'Adds to 10', RuleVariation.slap_on_add_to_10),
+                          'Adds to 10', RuleVariation.slap_on_add_to_10, 0.85),
 
-                      TableRow(children: [Container(height: 10)]),
+                      TableRow(children: [Container(height: baseFontSize * 0.25)]),
 
                       TableRow(children: [Text('Penalty for wrong slap:', style: TextStyle(fontSize: baseFontSize))]),
-                      makePenaltyRadioOptionRow('None', BadSlapPenaltyType.none),
-                      makePenaltyRadioOptionRow('Penalty card', BadSlapPenaltyType.penalty_card),
-                      makePenaltyRadioOptionRow("Can't slap for next 5 cards", BadSlapPenaltyType.slap_timeout),
+                      TableRow(children: [makeSlapPenaltyRow()]),
+                      // HERE: Make this a dropdown button with option for opponent to take the pile.
+                      //makePenaltyRadioOptionRow('None', BadSlapPenaltyType.none),
+                      //makePenaltyRadioOptionRow('Penalty card', BadSlapPenaltyType.penalty_card),
+                      //makePenaltyRadioOptionRow("Can't slap for next 5 cards", BadSlapPenaltyType.slap_timeout),
+                      //makePenaltyRadioOptionRow("Opponent wins pile", BadSlapPenaltyType.opponent_wins_pile),
                     ],
                   ),
-
+                  Container(height: 15, width: 0),
+                  ElevatedButton(
+                    style: raisedButtonStyle,
+                    onPressed: _closePreferences,
+                    child: Text('OK'),
+                  ),
                 ],
               ),
-
-              _paddingAll(10, Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [ElevatedButton(
-                  style: raisedButtonStyle,
-                  onPressed: _closePreferences,
-                  child: Text('OK'),
-                )],
-              )),
             ],
           ),
         ),

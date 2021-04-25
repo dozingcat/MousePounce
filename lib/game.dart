@@ -81,6 +81,8 @@ enum BadSlapPenaltyType {
   penalty_card,
   // The offending player can't slap for the next N cards.
   slap_timeout,
+  // The opponent wins the pile.
+  opponent_wins_pile,
 }
 
 class GameRules {
