@@ -90,6 +90,7 @@ class _MyHomePageState extends State<MyHomePage> {
   AIMode aiMode = AIMode.ai_vs_ai;
   DialogMode dialogMode = DialogMode.main_menu;
   int? pileMovingToPlayer;
+  int? badSlapPileWinner;
   PileCard? penaltyCard;
   bool penaltyCardPlayed = false;
   int? aiSlapPlayerIndex;
@@ -346,6 +347,7 @@ class _MyHomePageState extends State<MyHomePage> {
           game.setSlapTimeoutCardsForPlayer(5, playerIndex);
           break;
         case BadSlapPenaltyType.opponent_wins_pile:
+          badSlapPileWinner = 1 - playerIndex;
           break;
         default:
           break;
@@ -553,6 +555,13 @@ class _MyHomePageState extends State<MyHomePage> {
                 opacity: min(animValue, 1),
                 child: child,
               );
+            },
+            onEnd: () {
+              if (badSlapPileWinner != null) {
+                this.pileMovingToPlayer = badSlapPileWinner;
+                badSlapPileWinner = null;
+                setState(() {this.animationMode = AnimationMode.pile_to_winner;});
+              }
             },
           )
         ]);
