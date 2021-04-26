@@ -225,9 +225,13 @@ class _MyHomePageState extends State<MyHomePage> {
       final pileWinner = game.challengeChanceWinner;
       if (pileWinner != null) {
         animationMode = AnimationMode.waiting_to_move_pile;
-        pileMovingToPlayer = pileWinner;
         Future.delayed(const Duration(milliseconds: 1000), () {
-          setState(() => animationMode = AnimationMode.pile_to_winner);
+          setState(() {
+            if (this.animationMode == AnimationMode.waiting_to_move_pile) {
+              this.pileMovingToPlayer = pileWinner;
+              this.animationMode = AnimationMode.pile_to_winner;
+            }
+          });
         });
       }
       else {
@@ -559,7 +563,7 @@ class _MyHomePageState extends State<MyHomePage> {
             onEnd: () {
               if (badSlapPileWinner != null) {
                 this.pileMovingToPlayer = badSlapPileWinner;
-                badSlapPileWinner = null;
+                this.badSlapPileWinner = null;
                 setState(() {this.animationMode = AnimationMode.pile_to_winner;});
               }
             },
@@ -957,7 +961,9 @@ class _MyHomePageState extends State<MyHomePage> {
                     defaultColumnWidth: FixedColumnWidth(minDim * 0.8),
                     children: [
                       TableRow(children: [makeAiSpeedRow()]),
-                      TableRow(children: [Container(height: baseFontSize * 0.15)]),
+
+
+
                       makeRuleCheckboxRow('Tens are stoppers', RuleVariation.ten_is_stopper),
                       TableRow(children: [Container(height: baseFontSize * 0.25)]),
 
