@@ -109,7 +109,7 @@ class _MyHomePageState extends State<MyHomePage> {
     _readPreferencesAndStartGame();
   }
 
-  @override void didChangeDependencies() async {
+  @override void didChangeDependencies() {
     super.didChangeDependencies();
     _preloadCardImages();
   }
@@ -314,7 +314,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _doSlap(Offset globalOffset, double globalHeight) {
-    if (animationMode != AnimationMode.none) {
+    if (animationMode != AnimationMode.none && animationMode != AnimationMode.waiting_to_move_pile) {
       return;
     }
     int pnum = 0;
@@ -873,8 +873,7 @@ class _MyHomePageState extends State<MyHomePage> {
     final baseFontSize = min(maxDim / 36.0, minDim / 20.0);
 
     final makeRuleCheckboxRow = (String title, RuleVariation v, [double fontScale = 1.0]) {
-      return TableRow(children: [
-        CheckboxListTile(
+      return CheckboxListTile(
           dense: true,
           title: Text(title, style: TextStyle(fontSize: baseFontSize * fontScale)),
           isThreeLine: false,
@@ -883,12 +882,11 @@ class _MyHomePageState extends State<MyHomePage> {
             this.preferences.setBool(prefsKeyForVariation(v), checked == true);
           },
           value: game.rules.isVariationEnabled(v),
-        )
-      ]);
+        );
     };
 
     final makeAiSpeedRow = () {
-      final menuItemStyle = TextStyle(fontSize: baseFontSize * 0.9, color: Colors.blue);
+      final menuItemStyle = TextStyle(fontSize: baseFontSize * 0.9, color: Colors.blue, fontWeight: FontWeight.bold);
       return _paddingAll(0, ListTile(
         title: Text('Cat slap speed:', style: TextStyle(fontSize: baseFontSize)),
         trailing: DropdownButton(
@@ -908,7 +906,7 @@ class _MyHomePageState extends State<MyHomePage> {
     };
 
     final makeSlapPenaltyRow = () {
-      final menuItemStyle = TextStyle(fontSize: baseFontSize * 0.9, color: Colors.blue);
+      final menuItemStyle = TextStyle(fontSize: baseFontSize * 0.9, color: Colors.blue, fontWeight: FontWeight.bold);
       return DropdownButton(
             value: game.rules.badSlapPenalty,
             onChanged: (BadSlapPenaltyType? p) {
@@ -925,61 +923,49 @@ class _MyHomePageState extends State<MyHomePage> {
           );
     };
 
+    final dialogWidth = 0.8 * minDim;
+    final dialogPadding = (displaySize.width - dialogWidth) / 2;
     return Container(
       width: double.infinity,
       height: double.infinity,
-      child: Center(
-        child: Dialog(
-          backgroundColor: dialogBackgroundColor,
-          child: Padding(padding: EdgeInsets.all(minDim * 0.03),
+      child: Dialog(
+        insetPadding: EdgeInsets.only(left: dialogPadding, right: dialogPadding),
+        backgroundColor: dialogBackgroundColor,
+        child: Padding(
+          padding: EdgeInsets.all(minDim * 0.03),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-             Text('Preferences', style: TextStyle(fontSize: titleFontSize)),
+              Text('Preferences', style: TextStyle(fontSize: titleFontSize)),
+              makeAiSpeedRow(),
+              makeRuleCheckboxRow('Tens are stoppers', RuleVariation.ten_is_stopper),
+              Container(height: baseFontSize * 0.25),
 
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Table(
-                    defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                    defaultColumnWidth: FixedColumnWidth(minDim * 0.8),
-                    children: [
-                      TableRow(children: [makeAiSpeedRow()]),
+              Row(children: [Text('Slap on:', style: TextStyle(fontSize: baseFontSize))]),
+              makeRuleCheckboxRow('Sandwiches', RuleVariation.slap_on_sandwich, 0.85),
+              makeRuleCheckboxRow('Run of 3', RuleVariation.slap_on_run_of_3, 0.85),
+              makeRuleCheckboxRow(
+                  '4 of same suit', RuleVariation.slap_on_same_suit_of_4, 0.85),
+              makeRuleCheckboxRow(
+                  'Adds to 10', RuleVariation.slap_on_add_to_10, 0.85),
+              makeRuleCheckboxRow('Marriages', RuleVariation.slap_on_marriage, 0.85),
+              makeRuleCheckboxRow('Divorces', RuleVariation.slap_on_divorce, 0.85),
 
+              Container(height: baseFontSize * 0.25),
 
-
-                      makeRuleCheckboxRow('Tens are stoppers', RuleVariation.ten_is_stopper),
-                      TableRow(children: [Container(height: baseFontSize * 0.25)]),
-
-                      TableRow(children: [Text('Slap on:', style: TextStyle(fontSize: baseFontSize))]),
-                      makeRuleCheckboxRow('Sandwiches', RuleVariation.slap_on_sandwich, 0.85),
-                      makeRuleCheckboxRow('Run of 3', RuleVariation.slap_on_run_of_3, 0.85),
-                      makeRuleCheckboxRow(
-                          '4 of same suit', RuleVariation.slap_on_same_suit_of_4, 0.85),
-                      makeRuleCheckboxRow(
-                          'Adds to 10', RuleVariation.slap_on_add_to_10, 0.85),
-                      makeRuleCheckboxRow('Marriages', RuleVariation.slap_on_marriage, 0.85),
-                      makeRuleCheckboxRow('Divorces', RuleVariation.slap_on_divorce, 0.85),
-
-                      TableRow(children: [Container(height: baseFontSize * 0.25)]),
-
-                      TableRow(children: [Text('Penalty for wrong slap:', style: TextStyle(fontSize: baseFontSize))]),
-                      TableRow(children: [makeSlapPenaltyRow()]),
-                    ],
-                  ),
-                  Container(height: 15, width: 0),
-                  ElevatedButton(
-                    style: raisedButtonStyle,
-                    onPressed: _closePreferences,
-                    child: Text('OK'),
-                  ),
-                ],
+              Row(children: [Text('Penalty for wrong slap:', style: TextStyle(fontSize: baseFontSize))]),
+              Row(children: [makeSlapPenaltyRow()]),
+              Container(height: 15, width: 0),
+              ElevatedButton(
+                style: raisedButtonStyle,
+                onPressed: _closePreferences,
+                child: Text('OK'),
               ),
             ],
           ),
         ),
       ),
-    ));
+    );
   }
 
   @override
@@ -1040,8 +1026,7 @@ class _MyHomePageState extends State<MyHomePage> {
               ],
             ),
             if (dialogMode == DialogMode.main_menu) _mainMenuDialog(context, displaySize),
-            if (dialogMode == DialogMode.game_paused)
-              _pausedMenuDialog(displaySize),
+            if (dialogMode == DialogMode.game_paused) _pausedMenuDialog(displaySize),
             if (dialogMode == DialogMode.game_over) _gameOverDialog(displaySize),
             if (dialogMode == DialogMode.preferences) _preferencesDialog(displaySize),
             if (dialogMode == DialogMode.none) _menuIcon(),
