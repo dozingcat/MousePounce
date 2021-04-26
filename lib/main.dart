@@ -925,22 +925,6 @@ class _MyHomePageState extends State<MyHomePage> {
           );
     };
 
-    final makePenaltyRadioOptionRow = (String label, BadSlapPenaltyType penalty) {
-      return TableRow(children: [
-        RadioListTile(
-          dense: true,
-          title: Text(label, style: TextStyle(fontSize: baseFontSize * 0.85)),
-          groupValue: game.rules.badSlapPenalty,
-          value: penalty,
-          onChanged: (BadSlapPenaltyType? p) async {
-            setState(() {game.rules.badSlapPenalty = p!;});
-            SharedPreferences prefs = await SharedPreferences.getInstance();
-            prefs.setString(badSlapPenaltyPrefsKey, p.toString());
-          },
-        ),
-      ]);
-    };
-
     return Container(
       width: double.infinity,
       height: double.infinity,
@@ -981,11 +965,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
                       TableRow(children: [Text('Penalty for wrong slap:', style: TextStyle(fontSize: baseFontSize))]),
                       TableRow(children: [makeSlapPenaltyRow()]),
-                      // HERE: Make this a dropdown button with option for opponent to take the pile.
-                      //makePenaltyRadioOptionRow('None', BadSlapPenaltyType.none),
-                      //makePenaltyRadioOptionRow('Penalty card', BadSlapPenaltyType.penalty_card),
-                      //makePenaltyRadioOptionRow("Can't slap for next 5 cards", BadSlapPenaltyType.slap_timeout),
-                      //makePenaltyRadioOptionRow("Opponent wins pile", BadSlapPenaltyType.opponent_wins_pile),
                     ],
                   ),
                   Container(height: 15, width: 0),
