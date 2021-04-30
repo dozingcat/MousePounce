@@ -16,6 +16,6 @@ void main() {
     await tester.pumpWidget(MyApp());
 
     // Verify that buttons are shown in the main menu.
-    expect(find.byType(RaisedButton), findsNWidgets(5));
+    expect(find.byType(ElevatedButton), findsNWidgets(5));
   });
 }
