@@ -44,7 +44,7 @@ or decreasing rank are played, for example 8-7-6 or 9-10-jack. Aces can be high 
 are played.
 - **Slap on adds to 10**: If enabled, players can slap the pile when the last two cards add to 10,
 for example a 7 and a 3. Face cards and aces don't trigger this rule.
-- **Slap on marriages**: If enabled, players can slap the pile when a "marriages" occurs, which is
+- **Slap on marriages**: If enabled, players can slap the pile when a "marriage" occurs, which is
 when a king and queen are played consecutively.
 - **Slap on divorces**: If enabled, players can slap the pile when a "divorce" occurs, which is
 when a king and queen are played with another card between them.
