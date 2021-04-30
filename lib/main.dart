@@ -143,12 +143,9 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _preloadCardImages() {
-    var numCardsLoaded = 0;
     for (Rank r in Rank.values) {
       for (Suit s in Suit.values) {
-        precacheImage(AssetImage(_imagePathForCard(PlayingCard(r, s))), context).then((_) {
-          numCardsLoaded += 1;
-        });
+        precacheImage(AssetImage(_imagePathForCard(PlayingCard(r, s))), context);
       }
     }
   }
@@ -180,7 +177,7 @@ class _MyHomePageState extends State<MyHomePage> {
     final thisGame = game;
     if (_shouldAiPlayCard()) {
       Future.delayed(const Duration(milliseconds: 500), () {
-        if (thisGame == game && _shouldAiPlayCard()) {
+        if (thisGame == game && _shouldAiPlayCard() && badSlapPileWinner == null) {
           _playCard();
         }
       });
@@ -337,21 +334,23 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _handleIllegalSlap(final int playerIndex) {
+    final prevMode = this.animationMode;
+    final penalty = this.game.rules.badSlapPenalty;
     setState(() {
-      animationMode = AnimationMode.illegal_slap;
-      switch (game.rules.badSlapPenalty) {
+      this.animationMode = AnimationMode.illegal_slap;
+      switch (penalty) {
         case BadSlapPenaltyType.penalty_card:
           // Only one penalty card per real card?
           if (!penaltyCardPlayed) {
-            penaltyCard = game.addPenaltyCard(playerIndex);
-            penaltyCardPlayed = (penaltyCard != null);
+            this.penaltyCard = game.addPenaltyCard(playerIndex);
+            this.penaltyCardPlayed = (penaltyCard != null);
           }
           break;
         case BadSlapPenaltyType.slap_timeout:
-          game.setSlapTimeoutCardsForPlayer(5, playerIndex);
+          this.game.setSlapTimeoutCardsForPlayer(5, playerIndex);
           break;
         case BadSlapPenaltyType.opponent_wins_pile:
-          badSlapPileWinner = 1 - playerIndex;
+          this.badSlapPileWinner = 1 - playerIndex;
           break;
         default:
           break;
@@ -359,10 +358,21 @@ class _MyHomePageState extends State<MyHomePage> {
     });
     Future.delayed(illegalSlapAnimationDuration, () {
       setState(() {
-        animationMode = AnimationMode.none;
-        penaltyCard = null;
+        this.penaltyCard = null;
+        if (this.badSlapPileWinner != null) {
+          this.pileMovingToPlayer = badSlapPileWinner;
+          this.badSlapPileWinner = null;
+          this.animationMode = AnimationMode.pile_to_winner;
+        }
+        else if (prevMode == AnimationMode.waiting_to_move_pile && penalty == BadSlapPenaltyType.penalty_card) {
+          this.pileMovingToPlayer = this.game.challengeChanceWinner;
+          this.animationMode = AnimationMode.pile_to_winner;
+        }
+        else {
+          this.animationMode = AnimationMode.none;
+        }
       });
-      _scheduleAiPlayIfNeeded();
+      this._scheduleAiPlayIfNeeded();
     });
   }
 
@@ -406,7 +416,7 @@ class _MyHomePageState extends State<MyHomePage> {
             Transform.translate(
                 offset: Offset(110, 0),
                 child: Image(
-                  image: AssetImage('assets/cats/${moodImage}'),
+                  image: AssetImage('assets/cats/$moodImage'),
                   fit: BoxFit.fitHeight,
                   alignment: Alignment.center,
                 )
@@ -560,14 +570,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: child,
               );
             },
-            onEnd: () {
-              if (badSlapPileWinner != null) {
-                this.pileMovingToPlayer = badSlapPileWinner;
-                this.badSlapPileWinner = null;
-                setState(() {this.animationMode = AnimationMode.pile_to_winner;});
-              }
-            },
-          )
+          ),
         ]);
 
       default:
@@ -626,21 +629,21 @@ class _MyHomePageState extends State<MyHomePage> {
     return Padding(padding: EdgeInsets.all(paddingPx), child: child);
   }
 
+  TableRow _makeButtonRow(String title, void Function() onPressed) {
+    return TableRow(children: [
+      Padding(
+        padding: EdgeInsets.all(8),
+        child: ElevatedButton(
+          style: raisedButtonStyle,
+          onPressed: onPressed,
+          child: Text(title),
+        ),
+      ),
+    ]);
+  }
+
   Widget _mainMenuDialog(final BuildContext context, final Size displaySize) {
     final minDim = min(displaySize.width, displaySize.height);
-
-    final makeButtonRow = (String title, void Function() onPressed) {
-      return TableRow(children: [
-        Padding(
-          padding: EdgeInsets.all(8),
-          child: ElevatedButton(
-            style: raisedButtonStyle,
-            onPressed: onPressed,
-            child: Text(title),
-          ),
-        ),
-      ]);
-    };
 
     return Container(
         width: double.infinity,
@@ -661,13 +664,14 @@ class _MyHomePageState extends State<MyHomePage> {
                   defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                   defaultColumnWidth: const IntrinsicColumnWidth(),
                   children: [
-                    makeButtonRow('Play against computer', _startOnePlayerGame),
-                    makeButtonRow('Play against human', _startTwoPlayerGame),
-                    makeButtonRow('Watch the cats', _watchAiGame),
-                    makeButtonRow('Preferences...', _showPreferences),
-                    makeButtonRow('About...', () => _showAboutDialog(context)),
+                    _makeButtonRow('Play against computer', _startOnePlayerGame),
+                    _makeButtonRow('Play against human', _startTwoPlayerGame),
+                    _makeButtonRow('Watch the cats', _watchAiGame),
+                    _makeButtonRow('Preferences...', _showPreferences),
+                    _makeButtonRow('About...', () => _showAboutDialog(context)),
                   ],
                 ),
+                Container(height: 10, width: 0),
               ],
             ),
           ),
@@ -685,23 +689,13 @@ class _MyHomePageState extends State<MyHomePage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _paddingAll(10, Row(
-                children: [Expanded(
-                  child: ElevatedButton(
-                    style: raisedButtonStyle,
-                    onPressed: _continueGame,
-                    child: Text('Continue'),
-                  ),
-                )],
-              )),
-              _paddingAll(10, Row(
-                children: [Expanded(
-                  child: ElevatedButton(
-                    style: raisedButtonStyle,
-                    onPressed: _endGame,
-                    child: Text('End Game'),
-                  ),
-                )],
+              _paddingAll(10, Table(
+                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                defaultColumnWidth: const IntrinsicColumnWidth(),
+                children: [
+                  _makeButtonRow("Continue", _continueGame),
+                  _makeButtonRow("End Game", _endGame),
+                ],
               )),
             ],
           ),
@@ -733,23 +727,13 @@ class _MyHomePageState extends State<MyHomePage> {
                     fontSize: displaySize.width / 18,
                   )
               )),
-              _paddingAll(10, Row(
-                children: [Expanded(
-                  child: ElevatedButton(
-                    style: raisedButtonStyle,
-                    onPressed: _startNewGame,
-                    child: Text('Rematch'),
-                  ),
-                )],
-              )),
-              _paddingAll(10, Row(
-                children: [Expanded(
-                  child: ElevatedButton(
-                    style: raisedButtonStyle,
-                    onPressed: _endGame,
-                    child: Text('Main menu'),
-                  ),
-                )],
+              _paddingAll(10, Table(
+                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                defaultColumnWidth: const IntrinsicColumnWidth(),
+                children: [
+                  _makeButtonRow("Rematch", _startNewGame),
+                  _makeButtonRow("Main menu", _endGame),
+                ],
               )),
             ],
           )
@@ -1030,6 +1014,7 @@ class _MyHomePageState extends State<MyHomePage> {
             if (dialogMode == DialogMode.game_over) _gameOverDialog(displaySize),
             if (dialogMode == DialogMode.preferences) _preferencesDialog(displaySize),
             if (dialogMode == DialogMode.none) _menuIcon(),
+            // Text(this.animationMode.toString()),
           ],
         ),
       ),
