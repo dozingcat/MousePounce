@@ -657,7 +657,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 _paddingAll(10, Text(
                     'Egyptian Mouse Pounce',
                     style: TextStyle(
-                      fontSize: minDim / 18,
+                      fontSize: min(minDim / 18, 40),
                     )
                 )),
                 Table(
@@ -724,7 +724,7 @@ class _MyHomePageState extends State<MyHomePage> {
               _paddingAll(10, Text(
                   title,
                   style: TextStyle(
-                    fontSize: displaySize.width / 18,
+                    fontSize: min(displaySize.width / 15, 40),
                   )
               )),
               _paddingAll(10, Table(
