@@ -334,7 +334,6 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _handleIllegalSlap(final int playerIndex) {
-    final prevMode = this.animationMode;
     final penalty = this.game.rules.badSlapPenalty;
     setState(() {
       this.animationMode = AnimationMode.illegal_slap;
@@ -356,6 +355,7 @@ class _MyHomePageState extends State<MyHomePage> {
           break;
       }
     });
+    // When the slap animation finishes, move the pile to the winner if there is one.
     Future.delayed(illegalSlapAnimationDuration, () {
       setState(() {
         this.penaltyCard = null;
@@ -364,12 +364,15 @@ class _MyHomePageState extends State<MyHomePage> {
           this.badSlapPileWinner = null;
           this.animationMode = AnimationMode.pile_to_winner;
         }
-        else if (prevMode == AnimationMode.waiting_to_move_pile && penalty == BadSlapPenaltyType.penalty_card) {
-          this.pileMovingToPlayer = this.game.challengeChanceWinner;
-          this.animationMode = AnimationMode.pile_to_winner;
-        }
         else {
-          this.animationMode = AnimationMode.none;
+          final cw = this.game.challengeChanceWinner;
+          if (cw != null) {
+            this.pileMovingToPlayer = cw;
+            this.animationMode = AnimationMode.pile_to_winner;
+          }
+          else {
+            this.animationMode = AnimationMode.none;
+          }
         }
       });
       this._scheduleAiPlayIfNeeded();
