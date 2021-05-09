@@ -94,7 +94,7 @@ class _MyHomePageState extends State<MyHomePage> {
   PileCard? penaltyCard;
   bool penaltyCardPlayed = false;
   int? aiSlapPlayerIndex;
-  int aiSlapCounter = 0;
+  int aiSlapCounter = 0;  // Used to check if a previously scheduled AI slap is still valid.
   late List<int> catImageNumbers;
   List<AIMood> aiMoods = [AIMood.none, AIMood.none];
   int aiMoodCounter = 0;
@@ -751,6 +751,7 @@ class _MyHomePageState extends State<MyHomePage> {
       dialogMode = DialogMode.none;
       animationMode = AnimationMode.none;
       catImageNumbers = _randomCatImageNumbers();
+      aiSlapCounter++;
       game.startGame();
     });
   }
@@ -760,6 +761,7 @@ class _MyHomePageState extends State<MyHomePage> {
       aiMode = AIMode.human_vs_human;
       dialogMode = DialogMode.none;
       animationMode = AnimationMode.none;
+      aiSlapCounter++;
       game.startGame();
     });
   }
@@ -768,6 +770,7 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       dialogMode = DialogMode.none;
       animationMode = AnimationMode.none;
+      aiSlapCounter++;
       game.startGame();
     });
   }
@@ -783,6 +786,7 @@ class _MyHomePageState extends State<MyHomePage> {
       dialogMode = DialogMode.main_menu;
       aiMode = AIMode.ai_vs_ai;
       animationMode = AnimationMode.none;
+      aiSlapCounter++;
       game.startGame();
       _scheduleAiPlayIfNeeded();
     });
