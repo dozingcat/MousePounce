@@ -47,6 +47,8 @@ enum AnimationMode {
 }
 
 final illegalSlapAnimationDuration = Duration(milliseconds: 600);
+final moodDuration = Duration(milliseconds: 5000);
+final moodFadeMillis = 500;
 
 enum AIMode {human_vs_human, human_vs_ai, ai_vs_ai}
 
@@ -97,7 +99,6 @@ class _MyHomePageState extends State<MyHomePage> {
   int aiSlapCounter = 0;  // Used to check if a previously scheduled AI slap is still valid.
   late List<int> catImageNumbers;
   List<AIMood> aiMoods = [AIMood.none, AIMood.none];
-  int aiMoodCounter = 0;
   AISlapSpeed aiSlapSpeed = AISlapSpeed.medium;
   final numCatImages = 4;
 
@@ -244,17 +245,6 @@ class _MyHomePageState extends State<MyHomePage> {
     Rank.jack: 12,
   };
 
-  void _setAiMoods(final List<AIMood> moods) {
-    aiMoodCounter += 1;
-    int previousMoodCounter = aiMoodCounter;
-    setState(() => aiMoods = moods);
-    Future.delayed(const Duration(milliseconds: 5000), () {
-      if (previousMoodCounter == aiMoodCounter) {
-        setState(() => aiMoods = [AIMood.none, AIMood.none]);
-      }
-    });
-  }
-
   // Whether the AI should show a mood after winning or losing a pile, as determined by the number
   // and importance of cards in the pile.
   bool _aiHasMoodForPile(final List<PileCard> pileCards) {
@@ -264,6 +254,10 @@ class _MyHomePageState extends State<MyHomePage> {
       total += cval;
     }
     return total > 16;
+  }
+
+  void _setAiMoods(final List<AIMood> moods) {
+    setState(() => aiMoods = moods);
   }
 
   void _updateAiMoodsForPile(final List<PileCard> pileCards, final int pileWinner) {
@@ -415,18 +409,37 @@ class _MyHomePageState extends State<MyHomePage> {
             )
           ),
 
+          // Fade mood bubbles in and out.
           if (moodImage != null) Positioned.fill(top: 5, bottom: 40, child:
             Transform.translate(
                 offset: Offset(110, 0),
-                child: Image(
-                  image: AssetImage('assets/cats/$moodImage'),
-                  fit: BoxFit.fitHeight,
-                  alignment: Alignment.center,
+                child: TweenAnimationBuilder(
+                  tween: Tween(begin: 0.0, end: moodDuration.inMilliseconds.toDouble()),
+                  duration: moodDuration,
+                  onEnd: () => setState(() => aiMoods = [AIMood.none, AIMood.none]),
+                  child: Image(
+                    image: AssetImage('assets/cats/$moodImage'),
+                      fit: BoxFit.fitHeight,
+                      alignment: Alignment.center,
+                  ),
+                  builder: (BuildContext context, double animMillis, Widget? child) {
+                    double op = 1.0;
+                    if (animMillis < moodFadeMillis) {
+                      op = animMillis / moodFadeMillis;
+                    }
+                    else if (animMillis > moodDuration.inMilliseconds - moodFadeMillis) {
+                      op = (moodDuration.inMilliseconds - animMillis) / moodFadeMillis;
+                    }
+                    return Opacity(
+                      opacity: op,
+                      child: child,
+                    );
+                  },
                 )
-            )
+            ),
           ),
         ],
-      )
+      ),
     );
   }
 
