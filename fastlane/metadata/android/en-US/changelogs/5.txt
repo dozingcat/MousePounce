@@ -1,0 +1,2 @@
+- Fixed bug that could cause incorrect slaps when starting a new game.
+- Cat mood animations now fade in and out.
