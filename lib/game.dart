@@ -164,7 +164,9 @@ class Game {
   }
 
   bool canPlayCard(final int playerIndex) {
-    return this.currentPlayerIndex == playerIndex && this.challengeChanceWinner == null;
+    return this.gameWinner() == null &&
+        this.currentPlayerIndex == playerIndex &&
+        this.challengeChanceWinner == null;
   }
 
   void playCard() {
