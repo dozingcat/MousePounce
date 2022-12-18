@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:mouse_pounce/soundeffects.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -68,8 +69,9 @@ String prefsKeyForVariation(RuleVariation v) {
   return 'rule.${v.toString()}';
 }
 
-final String aiSlapSpeedPrefsKey = 'ai_slap_speed';
-final String badSlapPenaltyPrefsKey = 'bad_slap_penalty';
+final soundEnabledPrefsKey = 'sound_enabled';
+final aiSlapSpeedPrefsKey = 'ai_slap_speed';
+final badSlapPenaltyPrefsKey = 'bad_slap_penalty';
 
 // https://docs.google.com/document/d/1yohSuYrvyya5V1hB6j9pJskavCdVq9sVeTqSoEPsWH0/edit#
 final ButtonStyle raisedButtonStyle = ElevatedButton.styleFrom(
@@ -83,6 +85,7 @@ final ButtonStyle raisedButtonStyle = ElevatedButton.styleFrom(
 );
 
 final dialogBackgroundColor = Color.fromARGB(0xd0, 0xd8, 0xd8, 0xd8);
+const dialogTableBackgroundColor = Color.fromARGB(0x80, 0xc0, 0xc0, 0xc0);
 
 class _MyHomePageState extends State<MyHomePage> {
   Random rng = Random();
@@ -101,12 +104,14 @@ class _MyHomePageState extends State<MyHomePage> {
   List<AIMood> aiMoods = [AIMood.none, AIMood.none];
   AISlapSpeed aiSlapSpeed = AISlapSpeed.medium;
   final numCatImages = 4;
+  SoundEffectPlayer soundPlayer = SoundEffectPlayer();
 
   @override void initState() {
     super.initState();
     game = Game(rng: rng);
     catImageNumbers = _randomCatImageNumbers();
     penaltyCard = null;
+    soundPlayer.init();
     _readPreferencesAndStartGame();
   }
 
@@ -117,6 +122,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _readPreferencesAndStartGame() async {
     this.preferences = await SharedPreferences.getInstance();
+    soundPlayer.enabled = preferences.getBool(soundEnabledPrefsKey) ?? true;
+
     for (var v in RuleVariation.values) {
       bool enabled = this.preferences.getBool(prefsKeyForVariation(v)) ?? false;
       game.rules.setVariationEnabled(v, enabled);
@@ -264,16 +271,36 @@ class _MyHomePageState extends State<MyHomePage> {
     if (_aiHasMoodForPile(pileCards)) {
       var moods = pileWinner == 0 ? [AIMood.happy, AIMood.angry] : [AIMood.angry, AIMood.happy];
       _setAiMoods(moods);
+
+      _playSoundForMoods(moods);
     }
   }
 
   void _updateAiMoodsForGameWinner(int winner) {
     var moods = winner == 0 ? [AIMood.very_happy, AIMood.angry] : [AIMood.angry, AIMood.very_happy];
     _setAiMoods(moods);
+    _playSoundForMoods(moods);
+  }
+
+  void _playSoundForMoods(final List<AIMood> moods) {
+    if (aiMode != AIMode.human_vs_ai) {
+      return;
+    }
+    switch (moods[1]) {
+      case AIMood.angry:
+        soundPlayer.playMadSound();
+        break;
+      case AIMood.happy:
+      case AIMood.very_happy:
+        soundPlayer.playHappySound();
+        break;
+      default:
+        break;
+    }
   }
 
   void _movePileToWinner() {
-    _updateAiMoodsForPile(game.pileCards, pileMovingToPlayer!);
+    final cardsWon = [...game.pileCards];
     game.movePileToPlayer(pileMovingToPlayer!);
     int? winner = game.gameWinner();
     if (winner != null) {
@@ -290,6 +317,10 @@ class _MyHomePageState extends State<MyHomePage> {
         dialogMode = DialogMode.game_over;
       }
     }
+    else {
+      _updateAiMoodsForPile(cardsWon, pileMovingToPlayer!);
+    }
+
     animationMode = AnimationMode.none;
     pileMovingToPlayer = null;
     _scheduleAiPlayIfNeeded();
@@ -870,11 +901,24 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  void setSoundEnabled(bool enabled) {
+    setState(() {
+      soundPlayer.enabled = enabled;
+    });
+    preferences.setBool("soundEnabled", enabled);
+    if (Random().nextBool()) {
+      soundPlayer.playMadSound();
+    }
+    else {
+      soundPlayer.playHappySound();
+    }
+  }
+
   Widget _preferencesDialog(final Size displaySize) {
     final minDim = displaySize.shortestSide;
     final maxDim = displaySize.longestSide;
-    final titleFontSize = min(maxDim / 32.0, minDim / 18.0);
     final baseFontSize = min(maxDim / 36.0, minDim / 20.0);
+    final titleFontSize = baseFontSize * 1.3;
 
     final makeRuleCheckboxRow = (String title, RuleVariation v, [double fontScale = 1.0]) {
       return CheckboxListTile(
@@ -941,25 +985,44 @@ class _MyHomePageState extends State<MyHomePage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text('Preferences', style: TextStyle(fontSize: titleFontSize)),
-              makeAiSpeedRow(),
-              makeRuleCheckboxRow('Tens are stoppers', RuleVariation.ten_is_stopper),
-              Container(height: baseFontSize * 0.25),
 
-              Row(children: [Text('Slap on:', style: TextStyle(fontSize: baseFontSize))]),
-              makeRuleCheckboxRow('Sandwiches', RuleVariation.slap_on_sandwich, 0.85),
-              makeRuleCheckboxRow('Run of 3', RuleVariation.slap_on_run_of_3, 0.85),
-              makeRuleCheckboxRow(
-                  '4 of same suit', RuleVariation.slap_on_same_suit_of_4, 0.85),
-              makeRuleCheckboxRow(
-                  'Adds to 10', RuleVariation.slap_on_add_to_10, 0.85),
-              makeRuleCheckboxRow('Marriages', RuleVariation.slap_on_marriage, 0.85),
-              makeRuleCheckboxRow('Divorces', RuleVariation.slap_on_divorce, 0.85),
+              Flexible(child: Scrollbar(
+                thumbVisibility: true,
+                child: SingleChildScrollView(
+                primary: true,
+                child: Container(
+                  color: dialogTableBackgroundColor,
+                  child: Column(children: [
+                    CheckboxListTile(
+                      dense: true,
+                      title: Text("Enable sound", style: TextStyle(fontSize: baseFontSize)),
+                      value: soundPlayer.enabled,
+                      onChanged: (bool? checked) {
+                        setSoundEnabled(checked == true);
+                      },
+                    ),
 
-              Container(height: baseFontSize * 0.25),
+                    makeAiSpeedRow(),
+                    makeRuleCheckboxRow('Tens are stoppers', RuleVariation.ten_is_stopper),
+                    SizedBox(height: baseFontSize * 0.25),
 
-              Row(children: [Text('Penalty for wrong slap:', style: TextStyle(fontSize: baseFontSize))]),
-              Row(children: [makeSlapPenaltyRow()]),
-              Container(height: 15, width: 0),
+                    Row(children: [Text('Slap on:', style: TextStyle(fontSize: baseFontSize))]),
+                    makeRuleCheckboxRow('Sandwiches', RuleVariation.slap_on_sandwich, 0.85),
+                    makeRuleCheckboxRow('Run of 3', RuleVariation.slap_on_run_of_3, 0.85),
+                    makeRuleCheckboxRow(
+                        '4 of same suit', RuleVariation.slap_on_same_suit_of_4, 0.85),
+                    makeRuleCheckboxRow(
+                        'Adds to 10', RuleVariation.slap_on_add_to_10, 0.85),
+                    makeRuleCheckboxRow('Marriages', RuleVariation.slap_on_marriage, 0.85),
+                    makeRuleCheckboxRow('Divorces', RuleVariation.slap_on_divorce, 0.85),
+
+                    Container(height: baseFontSize * 0.25),
+
+                    Row(children: [Text('Penalty for wrong slap:', style: TextStyle(fontSize: baseFontSize))]),
+                    Row(children: [makeSlapPenaltyRow()]),
+              ]))))),
+
+              SizedBox(height: 15, width: 0),
               ElevatedButton(
                 style: raisedButtonStyle,
                 onPressed: _closePreferences,
