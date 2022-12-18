@@ -64,3 +64,5 @@ available [here](https://github.com/dozingcat/MousePounce).
 - "No" symbol by [OpenClipart-Vectors on Pixabay](https://pixabay.com/vectors/unauthorised-denied-ban-prohibition-156169/)
 - Cat emojis from [Noto Emoji by Google](https://github.com/googlefonts/noto-emoji/)
 - [Playing card images](https://code.google.com/archive/p/vector-playing-cards/)
+- Sounds by Boojie, Ginger, and Sauerkraut
+- 
