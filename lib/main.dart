@@ -9,6 +9,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'game.dart';
 
+const appTitle = "Egyptian Mouse Pounce";
+const appVersion = "1.3.0";
+const appLegalese = "© 2020-2022 Brian Nenninger";
+
 void main() {
   runApp(MyApp());
   SystemChrome.setEnabledSystemUIOverlays([]);
@@ -19,7 +23,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Egyptian Mouse Pounce',
+      title: appTitle,
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
@@ -886,9 +890,9 @@ class _MyHomePageState extends State<MyHomePage> {
     final aboutText = await DefaultAssetBundle.of(context).loadString('assets/doc/about.md');
     showAboutDialog(
         context: context,
-        applicationName: 'Egyptian Mouse Pounce',
-        applicationVersion: '1.2.1',
-        applicationLegalese: '© 2020-2021 Brian Nenninger',
+        applicationName: appTitle,
+        applicationVersion: appVersion,
+        applicationLegalese: appLegalese,
         children: [
           Container(height: 15),
           MarkdownBody(
