@@ -909,7 +909,7 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       soundPlayer.enabled = enabled;
     });
-    preferences.setBool("soundEnabled", enabled);
+    preferences.setBool(soundEnabledPrefsKey, enabled);
     if (Random().nextBool()) {
       soundPlayer.playMadSound();
     }
