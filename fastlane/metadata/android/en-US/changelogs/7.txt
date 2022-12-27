@@ -1,0 +1,1 @@
+- Fixed bug where sound setting wasn't saved correctly.
