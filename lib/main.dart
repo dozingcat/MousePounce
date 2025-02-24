@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -15,7 +14,7 @@ const appLegalese = "© 2020-2022 Brian Nenninger";
 
 void main() {
   runApp(MyApp());
-  SystemChrome.setEnabledSystemUIOverlays([]);
+  // SystemChrome.setEnabledSystemUIOverlays([]);
 }
 
 class MyApp extends StatelessWidget {
@@ -79,8 +78,8 @@ final badSlapPenaltyPrefsKey = 'bad_slap_penalty';
 
 // https://docs.google.com/document/d/1yohSuYrvyya5V1hB6j9pJskavCdVq9sVeTqSoEPsWH0/edit#
 final ButtonStyle raisedButtonStyle = ElevatedButton.styleFrom(
-  onPrimary: Colors.black87,
-  primary: Colors.grey[300],
+  // onPrimary: Colors.black87,
+  // primary: Colors.grey[300],
   minimumSize: Size(88, 36),
   padding: EdgeInsets.symmetric(horizontal: 16),
   shape: const RoundedRectangleBorder(
@@ -420,7 +419,7 @@ class _MyHomePageState extends State<MyHomePage> {
             child: Padding(padding: EdgeInsets.all(10), child: Text (
               'Play card: ${game.playerCards[playerIndex].length} left',
               style: TextStyle(
-                fontSize: Theme.of(context).textTheme.headline4!.fontSize,
+                fontSize: Theme.of(context).textTheme.headlineMedium!.fontSize,
                 color: enabled ? Colors.green : Colors.grey,
               )
           )),
@@ -662,7 +661,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   child: TextButton(
                       style: TextButton.styleFrom(
                         shape: CircleBorder(),
-                        primary: Colors.blue,
+                        // primary: Colors.blue,
                         backgroundColor: Colors.white,
                       ),
                     onPressed: () {},
