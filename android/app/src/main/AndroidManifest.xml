@@ -1,5 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.dozingcatsoftware.mouse_pounce">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- io.flutter.app.FlutterApplication is an android.app.Application that
          calls FlutterMain.startInitialization(this); in its onCreate method.
          In most cases you can leave this as-is, but you if you want to provide
@@ -45,5 +44,13 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Impeller is enabled by default in Flutter 3.27, but on my tablet
+             (Lenovo Chromebook Duet 9, "geralt"), it causes the app to render
+             upside down. Disabling Impeller fixes that.
+             https://docs.flutter.dev/perf/impeller
+        -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false" />
     </application>
 </manifest>
