@@ -14,7 +14,7 @@ const appLegalese = "© 2020-2022 Brian Nenninger";
 
 void main() {
   runApp(MyApp());
-  // SystemChrome.setEnabledSystemUIOverlays([]);
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
 }
 
 class MyApp extends StatelessWidget {
@@ -50,9 +50,11 @@ enum AnimationMode {
   illegal_slap,
 }
 
-final illegalSlapAnimationDuration = Duration(milliseconds: 600);
-final moodDuration = Duration(milliseconds: 5000);
-final moodFadeMillis = 500;
+const cardAspectRatio = 521.0 / 726;
+
+const illegalSlapAnimationDuration = Duration(milliseconds: 600);
+const moodDuration = Duration(milliseconds: 5000);
+const moodFadeMillis = 500;
 
 enum AIMode {human_vs_human, human_vs_ai, ai_vs_ai}
 
@@ -75,17 +77,6 @@ String prefsKeyForVariation(RuleVariation v) {
 final soundEnabledPrefsKey = 'sound_enabled';
 final aiSlapSpeedPrefsKey = 'ai_slap_speed';
 final badSlapPenaltyPrefsKey = 'bad_slap_penalty';
-
-// https://docs.google.com/document/d/1yohSuYrvyya5V1hB6j9pJskavCdVq9sVeTqSoEPsWH0/edit#
-final ButtonStyle raisedButtonStyle = ElevatedButton.styleFrom(
-  // onPrimary: Colors.black87,
-  // primary: Colors.grey[300],
-  minimumSize: Size(88, 36),
-  padding: EdgeInsets.symmetric(horizontal: 16),
-  shape: const RoundedRectangleBorder(
-    borderRadius: BorderRadius.all(Radius.circular(2)),
-  ),
-);
 
 final dialogBackgroundColor = Color.fromARGB(0xd0, 0xd8, 0xd8, 0xd8);
 const dialogTableBackgroundColor = Color.fromARGB(0x80, 0xc0, 0xc0, 0xc0);
@@ -414,7 +405,6 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Padding(
           padding: EdgeInsets.all(0.025 * displaySize.height),
           child: ElevatedButton(
-            style: raisedButtonStyle,
             onPressed: enabled ? (() => _playCardIfPlayerTurn(playerIndex)) : null,
             child: Padding(padding: EdgeInsets.all(10), child: Text (
               'Play card: ${game.playerCards[playerIndex].length} left',
@@ -478,11 +468,47 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget _cardImage(final PlayingCard card) {
-    return Image(
-      image: AssetImage(_imagePathForCard(card)),
-      fit: BoxFit.contain,
-      alignment: Alignment.center,
-    );
+    return LayoutBuilder(builder: (context, constraints) {
+      double width = constraints.maxWidth;
+      double height = constraints.maxHeight;
+      double viewAspectRatio = width / height;
+
+      final cardRect = (() {
+        if (viewAspectRatio > cardAspectRatio) {
+          // Full height, centered width.
+          double cardWidth = height * cardAspectRatio;
+          return Rect.fromLTWH(width / 2 - cardWidth / 2, 0, cardWidth, height);
+          // return Rect.fromLTWH(0, 0, width, height);
+        }
+        else {
+          // Full width, centered height.
+          double cardHeight = width / cardAspectRatio;
+          return Rect.fromLTWH(0, height / 2 - cardHeight / 2, width, cardHeight);
+        }
+      })();
+
+      // For some reason Stack doesn't work as a child of Positioned.
+      return Stack(children: [
+        Positioned.fromRect(
+          rect: cardRect,
+          child: Image(
+            image: AssetImage(_imagePathForCard(card)),
+            fit: BoxFit.contain,
+            alignment: Alignment.center,
+          ),
+        ),
+        Positioned.fromRect(
+          rect: cardRect,
+          child: Container(decoration: BoxDecoration(
+            border: Border.all(
+              color: const Color.fromRGBO(64, 64, 64, 1),
+              width: 1,
+            ),
+            borderRadius: BorderRadius.circular(cardRect.width * 0.04),
+          )),
+        ),
+      ]);
+    });
   }
 
   Widget _pileCardWidget(
@@ -666,7 +692,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                     onPressed: () {},
                     child: Text(numTimeoutCards.toString(),
-                    style: TextStyle(fontSize: size * 0.24))),
+                    style: TextStyle(fontSize: size * 0.24, height: 0))),
               ),
             ),
           ],
@@ -684,7 +710,6 @@ class _MyHomePageState extends State<MyHomePage> {
       Padding(
         padding: EdgeInsets.all(8),
         child: ElevatedButton(
-          style: raisedButtonStyle,
           onPressed: onPressed,
           child: Text(title),
         ),
@@ -1027,7 +1052,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
               SizedBox(height: 15, width: 0),
               ElevatedButton(
-                style: raisedButtonStyle,
                 onPressed: _closePreferences,
                 child: Text('OK'),
               ),
@@ -1040,11 +1064,21 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final displaySize = MediaQuery.of(context).size;
+    // displayPadding accounts for display cutouts which we don't want to draw over.
+    final fullDisplaySize = MediaQuery.sizeOf(context);
+    final displayPadding = MediaQuery.paddingOf(context);
+    final displaySize = Size(
+        fullDisplaySize.width - displayPadding.left - displayPadding.right,
+        fullDisplaySize.height - displayPadding.top - displayPadding.bottom);
+
     final playerHeight = 120.0; // displaySize.height / 9;
+
+    const cardAreaBackgroundColor = Color.fromARGB(255, 0, 128, 0);
+    const backgroundColor = Color.fromARGB(255, 187, 216, 182);
+
     return Scaffold(
-      backgroundColor: Color.fromARGB(255, 0, 128, 0),
-      body: Center(
+      backgroundColor: backgroundColor,
+      body: Padding(padding: displayPadding, child: Center(
         child: Stack(
           children: [
             // Use a stack with the card pile last so that the cards will draw
@@ -1059,7 +1093,6 @@ class _MyHomePageState extends State<MyHomePage> {
                   child: Container(
                     height: playerHeight,
                     width: double.infinity,
-                    color: Colors.white70,
                     child: aiMode == AIMode.human_vs_human ?
                       _playerStatusWidget(game, 1, displaySize) :
                       _aiPlayerWidget(game, 1, displaySize)
@@ -1073,7 +1106,6 @@ class _MyHomePageState extends State<MyHomePage> {
                   child: Container(
                       height: playerHeight,
                       width: double.infinity,
-                      color: Colors.white70,
                       child: aiMode == AIMode.ai_vs_ai ?
                       _aiPlayerWidget(game, 0, displaySize) :
                       _playerStatusWidget(game, 0, displaySize)
@@ -1084,14 +1116,17 @@ class _MyHomePageState extends State<MyHomePage> {
                   width: displaySize.width,
                   top: playerHeight,
                   height: displaySize.height - 2 * playerHeight,
-                  child:
-                    Stack(children: [
-                      Container(
-                        child: _pileContent(game, displaySize),
-                      ),
-                      _noSlapWidget(0, displaySize),
-                      _noSlapWidget(1, displaySize),
-                    ]),
+                  child: Container(
+                    color: cardAreaBackgroundColor,
+                    child:
+                      Stack(children: [
+                        Container(
+                          child: _pileContent(game, displaySize),
+                        ),
+                        _noSlapWidget(0, displaySize),
+                        _noSlapWidget(1, displaySize),
+                      ]),
+                  ),
                 ),
               ],
             ),
@@ -1104,6 +1139,6 @@ class _MyHomePageState extends State<MyHomePage> {
           ],
         ),
       ),
-    );
+    ));
   }
 }
