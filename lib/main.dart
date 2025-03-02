@@ -468,7 +468,6 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget _cardImage(final PlayingCard card) {
-    // return Container(color: Colors.blue);
     return LayoutBuilder(builder: (context, constraints) {
       double width = constraints.maxWidth;
       double height = constraints.maxHeight;
