@@ -1094,7 +1094,6 @@ class _MyHomePageState extends State<MyHomePage> {
                   child: Container(
                     height: playerHeight,
                     width: double.infinity,
-                    // color: Colors.white70,
                     child: aiMode == AIMode.human_vs_human ?
                       _playerStatusWidget(game, 1, displaySize) :
                       _aiPlayerWidget(game, 1, displaySize)
