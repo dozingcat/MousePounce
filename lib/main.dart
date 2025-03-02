@@ -9,8 +9,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'game.dart';
 
 const appTitle = "Egyptian Mouse Pounce";
-const appVersion = "1.3.1";
-const appLegalese = "© 2020-2022 Brian Nenninger";
+const appVersion = "1.4.0";
+const appLegalese = "© 2020-2025 Brian Nenninger";
 
 void main() {
   runApp(MyApp());
