@@ -14,7 +14,7 @@ const appLegalese = "© 2020-2022 Brian Nenninger";
 
 void main() {
   runApp(MyApp());
-  // SystemChrome.setEnabledSystemUIOverlays([]);
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
 }
 
 class MyApp extends StatelessWidget {
@@ -693,7 +693,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                     onPressed: () {},
                     child: Text(numTimeoutCards.toString(),
-                    style: TextStyle(fontSize: size * 0.24))),
+                    style: TextStyle(fontSize: size * 0.24, height: 0))),
               ),
             ),
           ],
@@ -1065,11 +1065,21 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final displaySize = MediaQuery.of(context).size;
+    // displayPadding accounts for display cutouts which we don't want to draw over.
+    final fullDisplaySize = MediaQuery.sizeOf(context);
+    final displayPadding = MediaQuery.paddingOf(context);
+    final displaySize = Size(
+        fullDisplaySize.width - displayPadding.left - displayPadding.right,
+        fullDisplaySize.height - displayPadding.top - displayPadding.bottom);
+
     final playerHeight = 120.0; // displaySize.height / 9;
+
+    const cardAreaBackgroundColor = Color.fromARGB(255, 0, 128, 0);
+    const backgroundColor = Color.fromARGB(255, 187, 216, 182);
+
     return Scaffold(
-      backgroundColor: Color.fromARGB(255, 0, 128, 0),
-      body: Center(
+      backgroundColor: backgroundColor,
+      body: Padding(padding: displayPadding, child: Center(
         child: Stack(
           children: [
             // Use a stack with the card pile last so that the cards will draw
@@ -1084,7 +1094,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   child: Container(
                     height: playerHeight,
                     width: double.infinity,
-                    color: Colors.white70,
+                    // color: Colors.white70,
                     child: aiMode == AIMode.human_vs_human ?
                       _playerStatusWidget(game, 1, displaySize) :
                       _aiPlayerWidget(game, 1, displaySize)
@@ -1098,7 +1108,6 @@ class _MyHomePageState extends State<MyHomePage> {
                   child: Container(
                       height: playerHeight,
                       width: double.infinity,
-                      color: Colors.white70,
                       child: aiMode == AIMode.ai_vs_ai ?
                       _aiPlayerWidget(game, 0, displaySize) :
                       _playerStatusWidget(game, 0, displaySize)
@@ -1109,14 +1118,17 @@ class _MyHomePageState extends State<MyHomePage> {
                   width: displaySize.width,
                   top: playerHeight,
                   height: displaySize.height - 2 * playerHeight,
-                  child:
-                    Stack(children: [
-                      Container(
-                        child: _pileContent(game, displaySize),
-                      ),
-                      _noSlapWidget(0, displaySize),
-                      _noSlapWidget(1, displaySize),
-                    ]),
+                  child: Container(
+                    color: cardAreaBackgroundColor,
+                    child:
+                      Stack(children: [
+                        Container(
+                          child: _pileContent(game, displaySize),
+                        ),
+                        _noSlapWidget(0, displaySize),
+                        _noSlapWidget(1, displaySize),
+                      ]),
+                  ),
                 ),
               ],
             ),
@@ -1129,6 +1141,6 @@ class _MyHomePageState extends State<MyHomePage> {
           ],
         ),
       ),
-    );
+    ));
   }
 }
