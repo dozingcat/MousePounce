@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -58,7 +59,15 @@ const moodFadeMillis = 500;
 
 enum AIMode {human_vs_human, human_vs_ai, ai_vs_ai}
 
-enum DialogMode {none, main_menu, preferences, game_paused, game_over, statistics}
+enum DialogMode {
+  none,
+  main_menu,
+  preferences,
+  game_paused,
+  game_over,
+  statistics,
+  animation_speed_warning,
+}
 
 enum AIMood {none, happy, very_happy, angry}
 
@@ -132,6 +141,8 @@ class _MyHomePageState extends State<MyHomePage> {
         (s) => s.toString() == penaltyStr, orElse: () => BadSlapPenaltyType.none);
 
     _scheduleAiPlayIfNeeded();
+
+    runAnimationTimingTestIfNeeded();
   }
 
   List<int> _randomCatImageNumbers() {
@@ -1062,6 +1073,75 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  // A Fluttter bug causes most animations to take nearly zero time if the
+  // ""Transition animation scale" option is set to off. This makes the game
+  // unplayable, so we try to detect it by running a test animation on startup.
+  // If the animation finishes much faster than it's supposed to, we're probably
+  // in that condition and we notify the user.
+  // See https://github.com/flutter/flutter/issues/164287
+  bool runningTimingTestAnimation = false;
+  int timingTestAnimationStartTimestamp = 0;
+
+  void runAnimationTimingTestIfNeeded() {
+    if (Platform.isAndroid) {
+      Future.delayed(Duration(milliseconds: 1000), () {
+        setState(() {
+          timingTestAnimationStartTimestamp = DateTime.now().millisecondsSinceEpoch;
+          runningTimingTestAnimation = true;
+          // print("*** Started test animation");
+        });
+      });
+    }
+  }
+
+  Widget timingTestAnimation() {
+    return TweenAnimationBuilder(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: Duration(seconds: 3),
+      onEnd: timingTestAnimationFinished,
+      child: const Positioned(left: 0, top: 0, height: 0, width: 0, child: SizedBox()),
+      builder: (BuildContext context, double animMillis, Widget? child) {
+        return child!;
+      },
+    );
+  }
+
+  void timingTestAnimationFinished() {
+    int elapsed = DateTime.now().millisecondsSinceEpoch - timingTestAnimationStartTimestamp;
+    // print("*** test animation done, elapsed: $elapsed");
+    if (elapsed < 1000) {
+      setState(() {dialogMode = DialogMode.animation_speed_warning;});
+    }
+  }
+
+  Widget animationSpeedWarningDialog(final Size displaySize) {
+    String animationMessage = 'If animations are too fast, check the "Transition animation scale" option in the Settings app and make sure it\'s not set to "off".';
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      child: Center(
+        child: Dialog(
+          backgroundColor: dialogBackgroundColor,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(padding: EdgeInsets.all(24), child: Text(
+                  animationMessage,
+                  style: TextStyle(
+                    fontSize: 20,
+                  )
+              )),
+              Padding(padding: EdgeInsets.only(bottom: 24), child: ElevatedButton(
+                onPressed: () {setState(() {dialogMode = DialogMode.main_menu;});},
+                child: Text('OK'),
+              )),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // displayPadding accounts for display cutouts which we don't want to draw over.
@@ -1085,6 +1165,8 @@ class _MyHomePageState extends State<MyHomePage> {
             // over the player areas when they're animating in.
             Stack(
               children: [
+                if (runningTimingTestAnimation) timingTestAnimation(),
+
                 Positioned(
                   left: 0,
                   width: displaySize.width,
@@ -1134,6 +1216,7 @@ class _MyHomePageState extends State<MyHomePage> {
             if (dialogMode == DialogMode.game_paused) _pausedMenuDialog(displaySize),
             if (dialogMode == DialogMode.game_over) _gameOverDialog(displaySize),
             if (dialogMode == DialogMode.preferences) _preferencesDialog(displaySize),
+            if (dialogMode == DialogMode.animation_speed_warning) animationSpeedWarningDialog(displaySize),
             if (dialogMode == DialogMode.none) _menuIcon(),
             // Text(this.animationMode.toString()),
           ],
