@@ -229,29 +229,31 @@ class Game {
   }
 
   bool canSlapPile() {
-    // Penalty cards don't count.
-    final activeCards = pileCards.sublist(numPenaltyCardsInPile);
-    final ps = activeCards.length;
-    if (ps >= 2 && activeCards[ps - 1].card.rank == activeCards[ps - 2].card.rank) {
+    // Penalty cards are ignored when determining whether a slap is possible.
+    final nc = pileCards.length - numPenaltyCardsInPile;
+
+    final cardFromTop = (int n) => pileCards[pileCards.length - 1 - n].card;
+
+    if (nc >= 2 && cardFromTop(0).rank == cardFromTop(1).rank) {
       return true;
     }
-    if (rules.isVariationEnabled(RuleVariation.slap_on_sandwich) && ps >= 3 &&
-        activeCards[ps - 1].card.rank == activeCards[ps - 3].card.rank) {
+    if (rules.isVariationEnabled(RuleVariation.slap_on_sandwich) && nc >= 3 &&
+        cardFromTop(0).rank == cardFromTop(2).rank) {
       return true;
     }
-    if (rules.isVariationEnabled(RuleVariation.slap_on_same_suit_of_4) && ps >= 4) {
-      Suit topSuit = pileCards[ps - 1].card.suit;
-      if (activeCards[ps - 2].card.suit == topSuit &&
-          activeCards[ps - 3].card.suit == topSuit &&
-          activeCards[ps - 4].card.suit == topSuit) {
+    if (rules.isVariationEnabled(RuleVariation.slap_on_same_suit_of_4) && nc >= 4) {
+      Suit topSuit = cardFromTop(0).suit;
+      if (cardFromTop(1).suit == topSuit &&
+          cardFromTop(2).suit == topSuit &&
+          cardFromTop(3).suit == topSuit) {
         return true;
       }
     }
-    if (rules.isVariationEnabled(RuleVariation.slap_on_run_of_3) && ps >= 3) {
+    if (rules.isVariationEnabled(RuleVariation.slap_on_run_of_3) && nc >= 3) {
       final numRanks = Rank.values.length;
-      final r1 = activeCards[ps - 1].card.rank.index;
-      final r2 = activeCards[ps - 2].card.rank.index;
-      final r3 = activeCards[ps - 3].card.rank.index;
+      final r1 = cardFromTop(0).rank.index;
+      final r2 = cardFromTop(1).rank.index;
+      final r3 = cardFromTop(2).rank.index;
       if ((r2 == (r1 + 1) % numRanks) && r3 == (r1 + 2) % numRanks) {
         return true;
       }
@@ -259,23 +261,23 @@ class Game {
         return true;
       }
     }
-    if (rules.isVariationEnabled(RuleVariation.slap_on_add_to_10) && ps >= 2) {
-      final r1 = pileCards[ps - 1].card.rank.numericValue;
-      final r2 = pileCards[ps - 2].card.rank.numericValue;
+    if (rules.isVariationEnabled(RuleVariation.slap_on_add_to_10) && nc >= 2) {
+      final r1 = cardFromTop(0).rank.numericValue;
+      final r2 = cardFromTop(1).rank.numericValue;
       if (r1 + r2 == 10) {
         return true;
       }
     }
-    if (rules.isVariationEnabled(RuleVariation.slap_on_marriage) && ps >= 2) {
-      final r1 = pileCards[ps - 1].card.rank;
-      final r2 = pileCards[ps - 2].card.rank;
+    if (rules.isVariationEnabled(RuleVariation.slap_on_marriage) && nc >= 2) {
+      final r1 = cardFromTop(0).rank;
+      final r2 = cardFromTop(1).rank;
       if ((r1 == Rank.king && r2 == Rank.queen) || (r1 == Rank.queen && r2 == Rank.king)) {
         return true;
       }
     }
-    if (rules.isVariationEnabled(RuleVariation.slap_on_divorce) && ps >= 3) {
-      final r1 = pileCards[ps - 1].card.rank;
-      final r3 = pileCards[ps - 3].card.rank;
+    if (rules.isVariationEnabled(RuleVariation.slap_on_divorce) && nc >= 3) {
+      final r1 = cardFromTop(0).rank;
+      final r3 = cardFromTop(2).rank;
       if ((r1 == Rank.king && r3 == Rank.queen) || (r1 == Rank.queen && r3 == Rank.king)) {
         return true;
       }
