@@ -238,4 +238,28 @@ void main() {
       expect(game.canSlapPile(), slapIndices.contains(i), reason: 'Wrong at index $i');
     }
   });
+
+  test('ignores penalty cards when checking if slap is allowed', () {
+    final game = Game();
+    game.rules.setVariationEnabled(RuleVariation.slap_on_add_to_10, true);
+    game.playerCards = [
+      cards('4C 3H'),
+      cards('6D 7S'),
+    ];
+    game.addPenaltyCard(1);
+    game.playCard();
+    // Top cards are 6 and 4, but can't slap because the 6 was a penalty card.
+    expect(game.pileCards.length, 2);
+    expect(game.pileCards[0].card.rank, Rank.six);
+    expect(game.pileCards[1].card.rank, Rank.four);
+    expect(game.canSlapPile(), false);
+    // Next card is a 7 from second player, no slap.
+    game.playCard();
+    expect(game.pileCards.last.card.rank, Rank.seven);
+    expect(game.canSlapPile(), false);
+    // Can slap after a 3 from the first player.
+    game.playCard();
+    expect(game.pileCards.last.card.rank, Rank.three);
+    expect(game.canSlapPile(), true);
+  });
 }
