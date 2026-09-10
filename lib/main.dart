@@ -521,7 +521,7 @@ class _MyHomePageState extends State<MyHomePage> {
           rect: cardRect,
           child: Container(decoration: BoxDecoration(
             border: Border.all(
-              color: const Color.fromRGBO(64, 64, 64, 0),
+              color: const Color.fromRGBO(64, 64, 64, 0.25),
               width: 0,
             ),
             borderRadius: BorderRadius.circular(cornerRadius),
