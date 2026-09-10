@@ -1,32 +1,31 @@
 plugins {
     id "com.android.application"
-    id "kotlin-android"
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id "dev.flutter.flutter-gradle-plugin"
 }
 
 def localProperties = new Properties()
-def localPropertiesFile = rootProject.file('local.properties')
+def localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
-    localPropertiesFile.withReader('UTF-8') { reader ->
+    localPropertiesFile.withReader("UTF-8") { reader ->
         localProperties.load(reader)
     }
 }
 
-def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+def flutterVersionCode = localProperties.getProperty("flutter.versionCode")
 if (flutterVersionCode == null) {
-    flutterVersionCode = '1'
+    flutterVersionCode = "1"
 }
 
-def flutterVersionName = localProperties.getProperty('flutter.versionName')
+def flutterVersionName = localProperties.getProperty("flutter.versionName")
 if (flutterVersionName == null) {
-    flutterVersionName = '1.0'
+    flutterVersionName = "1.0"
 }
 
-// Added as described in https://flutter.dev/docs/deployment/android
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file('key.properties')
-if (keystorePropertiesFile.exists()) {
+def hasReleaseKey = keystorePropertiesFile.exists()
+if (hasReleaseKey) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
 
@@ -35,17 +34,13 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
-    // This fails with 21 for some reason.
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-    kotlinOptions {
-        jvmTarget = '17'
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     defaultConfig {
-        applicationId "com.dozingcatsoftware.mouse_pounce"
+        applicationId = "com.dozingcatsoftware.mouse_pounce"
         // You can update the following values to match your application needs.
         // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
         minSdk = flutter.minSdkVersion
@@ -53,15 +48,18 @@ android {
         versionCode = flutterVersionCode.toInteger()
         versionName = flutterVersionName
     }
-    signingConfigs {
-        release {
-            keyAlias keystoreProperties['keyAlias']
-            keyPassword keystoreProperties['keyPassword']
-            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
-            storePassword keystoreProperties['storePassword']
-        }
 
-        fdroid {}
+    signingConfigs {
+        // Only defined if key.properties exists, so that builds which don't need it
+        // (fdroid, debug) work without it.
+        if (hasReleaseKey) {
+            release {
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+                storePassword keystoreProperties['storePassword']
+            }
+        }
     }
 
     // fdroid config from https://nikhiljha.com/posts/flutteronfdroid/
@@ -69,36 +67,60 @@ android {
     flavorDimensions "deploy"
 
     productFlavors {
-        std {}
+        // Signing configs are set here rather than in buildTypes.release, because a build
+        // type's signing config takes precedence over a flavor's and would make the fdroid
+        // build try to sign with the release key. (Debug builds are unaffected: the debug
+        // build type sets its own signing config, which wins over these.)
+        std {
+            dimension "deploy"
+            if (hasReleaseKey) {
+                // Change this to "signingConfigs.debug" to do a release build without
+                // using production keys.
+                signingConfig = signingConfigs.release
+            }
+        }
 
+        // F-Droid builds the app and signs it with their own key, so no signing config
+        // is set here and the built apk is left unsigned.
         fdroid {
             dimension "deploy"
-            signingConfig signingConfigs.fdroid
-        }
-    }
-
-    android.applicationVariants.all { variant ->
-        if (variant.flavorName == "fdroid") {
-            variant.outputs.all { output ->
-                output.outputFileName = "app-fdroid-release.apk"
-            }
         }
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.debug
+            // Signing config comes from the product flavor; see above.
         }
     }
+}
 
-    // https://github.com/flutter/flutter/issues/58247#issuecomment-636253593
-    lintOptions {
-        checkReleaseBuilds false
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21
     }
 }
 
 flutter {
-    source '../..'
+    source = "../.."
+}
+
+// Without this, a std release build with no key.properties would silently produce an
+// unsigned apk. Only checked when actually building std release, so that fdroid and
+// debug builds still work without a key. Reads the flavor's signing config rather than
+// key.properties directly, so pointing std at signingConfigs.debug also satisfies it.
+tasks.matching { it.name == "preStdReleaseBuild" }.configureEach {
+    doFirst {
+        if (android.productFlavors.std.signingConfig == null) {
+            throw new GradleException(
+                    "No signing config for the std release build. Create android/key.properties " +
+                            "with storeFile/storePassword/keyAlias/keyPassword, or build the unsigned " +
+                            "fdroid flavor instead.")
+        }
+    }
 }
