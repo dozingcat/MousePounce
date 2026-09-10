@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:mouse_pounce/soundeffects.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -417,13 +417,13 @@ class _MyHomePageState extends State<MyHomePage> {
           padding: EdgeInsets.all(0.025 * displaySize.height),
           child: ElevatedButton(
             onPressed: enabled ? (() => _playCardIfPlayerTurn(playerIndex)) : null,
-            child: Padding(padding: EdgeInsets.all(10), child: Text (
+            child: FittedBox(child: Padding(padding: EdgeInsets.all(10), child: Text (
               'Play card: ${game.playerCards[playerIndex].length} left',
               style: TextStyle(
                 fontSize: Theme.of(context).textTheme.headlineMedium!.fontSize,
                 color: enabled ? Colors.green : Colors.grey,
               )
-          )),
+          ))),
         )));
   }
 
@@ -498,24 +498,33 @@ class _MyHomePageState extends State<MyHomePage> {
         }
       })();
 
+      final cornerRadius = cardRect.width * 0.04;
+
       // For some reason Stack doesn't work as a child of Positioned.
       return Stack(children: [
         Positioned.fromRect(
           rect: cardRect,
+          child: DecoratedBox(decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(cornerRadius),
+            boxShadow: [BoxShadow(
+              color: const Color(0x66000000),
+              blurRadius: cardRect.width * 0.02,
+            )],
+          ),
           child: Image(
             image: AssetImage(_imagePathForCard(card)),
             fit: BoxFit.contain,
             alignment: Alignment.center,
           ),
-        ),
+        )),
         Positioned.fromRect(
           rect: cardRect,
           child: Container(decoration: BoxDecoration(
             border: Border.all(
-              color: const Color.fromRGBO(64, 64, 64, 1),
-              width: 1,
+              color: const Color.fromRGBO(64, 64, 64, 0.25),
+              width: 0,
             ),
-            borderRadius: BorderRadius.circular(cardRect.width * 0.04),
+            borderRadius: BorderRadius.circular(cornerRadius),
           )),
         ),
       ]);
@@ -1170,6 +1179,23 @@ class _MyHomePageState extends State<MyHomePage> {
                 Positioned(
                   left: 0,
                   width: displaySize.width,
+                  top: playerHeight,
+                  height: displaySize.height - 2 * playerHeight,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: cardAreaBackgroundColor,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0x66000000),
+                          blurRadius: displaySize.shortestSide * 0.02,
+                        )
+                      ]
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 0,
+                  width: displaySize.width,
                   top: 0,
                   height: playerHeight,
                   child: Container(
@@ -1198,18 +1224,14 @@ class _MyHomePageState extends State<MyHomePage> {
                   width: displaySize.width,
                   top: playerHeight,
                   height: displaySize.height - 2 * playerHeight,
-                  child: Container(
-                    color: cardAreaBackgroundColor,
-                    child:
-                      Stack(children: [
-                        Container(
-                          child: _pileContent(game, displaySize),
-                        ),
-                        _noSlapWidget(0, displaySize),
-                        _noSlapWidget(1, displaySize),
-                      ]),
+                  child: Stack(children: [
+                      Container(
+                        child: _pileContent(game, displaySize),
+                      ),
+                      _noSlapWidget(0, displaySize),
+                      _noSlapWidget(1, displaySize),
+                    ]),
                   ),
-                ),
               ],
             ),
             if (dialogMode == DialogMode.main_menu) _mainMenuDialog(context, displaySize),

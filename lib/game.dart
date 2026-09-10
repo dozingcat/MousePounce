@@ -1,8 +1,8 @@
 import 'dart:math';
 
-enum Suit {clubs, diamonds, hearts, spades}
+enum Suit {
+  clubs, diamonds, hearts, spades;
 
-extension SuitExtension on Suit {
   String get asciiChar {
     switch (this) {
       case Suit.clubs: return 'C';
@@ -13,9 +13,9 @@ extension SuitExtension on Suit {
   }
 }
 
-enum Rank {two, three, four, five, six, seven, eight, nine, ten, jack, queen, king, ace}
+enum Rank {
+  two, three, four, five, six, seven, eight, nine, ten, jack, queen, king, ace;
 
-extension RankExtension on Rank {
   // Returns number for non-face card, or jack=11, queen=12, king=13, ace=14.
   int get numericValue {
     return this.index + 2;
