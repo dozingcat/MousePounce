@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
@@ -8,6 +10,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'game.dart';
+import 'stats.dart';
+import 'stats_dialog.dart';
 
 const appTitle = "Egyptian Mouse Pounce";
 const appVersion = "1.4.0";
@@ -90,9 +94,16 @@ final badSlapPenaltyPrefsKey = 'bad_slap_penalty';
 final dialogBackgroundColor = Color.fromARGB(0xd0, 0xd8, 0xd8, 0xd8);
 const dialogTableBackgroundColor = Color.fromARGB(0x80, 0xc0, 0xc0, 0xc0);
 
-class _MyHomePageState extends State<MyHomePage> {
+// Stats are kept up to date in memory and written to storage at most this
+// often while a game is in progress, and immediately when a game ends.
+const statsSaveInterval = Duration(seconds: 10);
+
+class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   Random rng = Random();
   late final SharedPreferences preferences;
+  Stats stats = Stats.empty;
+  bool statsDirty = false;
+  Timer? statsSaveTimer;
   Game game = Game();
   AnimationMode animationMode = AnimationMode.none;
   AIMode aiMode = AIMode.ai_vs_ai;
@@ -111,6 +122,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     game = Game(rng: rng);
     catImageNumbers = _randomCatImageNumbers();
     penaltyCard = null;
@@ -118,14 +130,47 @@ class _MyHomePageState extends State<MyHomePage> {
     _readPreferencesAndStartGame();
   }
 
+  @override void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    statsSaveTimer?.cancel();
+    _saveStatsIfNeeded();
+    super.dispose();
+  }
+
   @override void didChangeDependencies() {
     super.didChangeDependencies();
     _preloadCardImages();
   }
 
+  @override void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Save any pending stats when the app goes to the background, since it
+    // may be killed without further notice.
+    if (state != AppLifecycleState.resumed) {
+      _saveStatsIfNeeded();
+    }
+  }
+
+  Future<Stats?> readStats() async {
+    final s = preferences.getString("stats");
+    if (s == null) return null;
+    try {
+      final json = jsonDecode(s);
+      return (json is Map<String, dynamic>) ? Stats.fromJson(json) : null;
+    } catch (ex) {
+      return null;
+    }
+  }
+
+  Future<void> writeStats(Stats stats) async {
+    await preferences.setString("stats", jsonEncode(stats.toJson()));
+  }
+
   void _readPreferencesAndStartGame() async {
     this.preferences = await SharedPreferences.getInstance();
     soundPlayer.enabled = preferences.getBool(soundEnabledPrefsKey) ?? true;
+
+    stats = (await readStats()) ?? Stats.empty;
+    statsSaveTimer = Timer.periodic(statsSaveInterval, (_) => _saveStatsIfNeeded());
 
     for (var v in RuleVariation.values) {
       bool enabled = this.preferences.getBool(prefsKeyForVariation(v)) ?? false;
@@ -163,9 +208,44 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  // Stats are only tracked for games with at least one human player.
+  // Card plays and slaps are recorded as they happen, and saved to storage
+  // periodically (see statsSaveInterval) and when the game ends.
+  void _updateStats(Stats Function(Stats) updateFn) {
+    if (aiMode == AIMode.ai_vs_ai) {
+      return;
+    }
+    stats = updateFn(stats);
+    statsDirty = true;
+  }
+
+  void _saveStatsIfNeeded() {
+    if (statsDirty) {
+      statsDirty = false;
+      writeStats(stats);
+    }
+  }
+
+  void _recordCardPlayed() {
+    _updateStats((s) => aiMode == AIMode.human_vs_ai ?
+        s.withVsAiCardPlayed() : s.withVsHumanCardPlayed());
+  }
+
+  void _recordSlap(final int playerIndex) {
+    _updateStats((s) => aiMode == AIMode.human_vs_ai ?
+        s.withVsAiSlap(playerIndex) : s.withVsHumanSlap(playerIndex));
+  }
+
+  void _recordGameWinner(final int winnerIndex) {
+    _updateStats((s) => aiMode == AIMode.human_vs_ai ?
+        s.withVsAiGameWon(winnerIndex) : s.withVsHumanGameWon(winnerIndex));
+    _saveStatsIfNeeded();
+  }
+
   void _playCard() {
     setState(() {
       game.playCard();
+      _recordCardPlayed();
       animationMode = AnimationMode.play_card_back;
       aiSlapCounter++;
       penaltyCard = null;
@@ -199,16 +279,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
   int _aiSlapDelayMillis() {
     int baseDelay = 300 + (500 * rng.nextDouble()).toInt();
-    switch (aiSlapSpeed) {
-      case AISlapSpeed.medium:
-        return baseDelay;
-      case AISlapSpeed.fast:
-        return (baseDelay * 0.6).toInt();
-      case AISlapSpeed.slow:
-        return baseDelay * 2;
-      default:
-        throw AssertionError('Unknown AISlapSpeed');
-    }
+    return switch (aiSlapSpeed) {
+      .medium => baseDelay,
+      .fast => (baseDelay * 0.6).toInt(),
+      .slow => baseDelay * 2,
+    };
   }
 
   void _playCardFinished() {
@@ -221,6 +296,7 @@ class _MyHomePageState extends State<MyHomePage> {
       Future.delayed(Duration(milliseconds: delayMillis), () {
         if (counterSnapshot == aiSlapCounter) {
           setState(() {
+            _recordSlap(aiIndex);
             animationMode = AnimationMode.ai_slap;
             pileMovingToPlayer = aiIndex;
             aiSlapPlayerIndex = aiIndex;
@@ -309,6 +385,7 @@ class _MyHomePageState extends State<MyHomePage> {
     game.movePileToPlayer(pileMovingToPlayer!);
     int? winner = game.gameWinner();
     if (winner != null) {
+      _recordGameWinner(winner);
       _updateAiMoodsForGameWinner(winner);
       if (aiMode == AIMode.ai_vs_ai) {
         Future.delayed(const Duration(milliseconds: 2000), () {
@@ -353,6 +430,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
     if (game.canSlapPile()) {
       setState(() {
+        _recordSlap(pnum);
         aiSlapCounter++;
         pileMovingToPlayer = pnum;
         animationMode = AnimationMode.pile_to_winner;
@@ -763,6 +841,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     _makeButtonRow('Play against human', _startTwoPlayerGame),
                     _makeButtonRow('Watch the cats', _watchAiGame),
                     _makeButtonRow('Preferences...', _showPreferences),
+                    _makeButtonRow('Statistics...', _showStats),
                     _makeButtonRow('About...', () => _showAboutDialog(context)),
                   ],
                 ),
@@ -874,6 +953,8 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _endGame() {
+    // Cards played and slaps from an abandoned game still count.
+    _saveStatsIfNeeded();
     setState(() {
       dialogMode = DialogMode.main_menu;
       aiMode = AIMode.ai_vs_ai;
@@ -894,6 +975,26 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       dialogMode = (aiMode == AIMode.ai_vs_ai ? DialogMode.main_menu : DialogMode.none);
     });
+  }
+
+  void _showStats() {
+    setState(() {
+      dialogMode = DialogMode.statistics;
+    });
+  }
+
+  void _closeStats() {
+    setState(() {
+      dialogMode = DialogMode.main_menu;
+    });
+  }
+
+  void _resetStats() {
+    setState(() {
+      stats = Stats.empty;
+      statsDirty = true;
+    });
+    _saveStatsIfNeeded();
   }
 
   void _watchAiGame() {
@@ -1238,6 +1339,14 @@ class _MyHomePageState extends State<MyHomePage> {
             if (dialogMode == DialogMode.game_paused) _pausedMenuDialog(displaySize),
             if (dialogMode == DialogMode.game_over) _gameOverDialog(displaySize),
             if (dialogMode == DialogMode.preferences) _preferencesDialog(displaySize),
+            if (dialogMode == DialogMode.statistics) StatsDialog(
+                stats: stats,
+                displaySize: displaySize,
+                backgroundColor: dialogBackgroundColor,
+                tableBackgroundColor: dialogTableBackgroundColor,
+                onClose: _closeStats,
+                onReset: _resetStats,
+            ),
             if (dialogMode == DialogMode.animation_speed_warning) animationSpeedWarningDialog(displaySize),
             if (dialogMode == DialogMode.none) _menuIcon(),
             // Text(this.animationMode.toString()),
