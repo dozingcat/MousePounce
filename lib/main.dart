@@ -14,8 +14,8 @@ import 'stats.dart';
 import 'stats_dialog.dart';
 
 const appTitle = "Egyptian Mouse Pounce";
-const appVersion = "1.4.0";
-const appLegalese = "© 2020-2025 Brian Nenninger";
+const appVersion = "1.5.0";
+const appLegalese = "© 2020-2026 Brian Nenninger";
 
 void main() {
   runApp(MyApp());
