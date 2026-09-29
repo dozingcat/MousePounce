@@ -1172,7 +1172,8 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                     ),
                     CardImageSetPreference(
                       settings: cardImageSettings,
-                      labelStyle: TextStyle(fontSize: baseFontSize),
+                      labelStyle: TextStyle(fontSize: baseFontSize * 0.8),
+                      cardHeight: 100,
                     ),
 
                     makeAiSpeedRow(),
