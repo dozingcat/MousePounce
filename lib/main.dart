@@ -9,6 +9,7 @@ import 'package:mouse_pounce/soundeffects.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'card_images.dart';
 import 'game.dart';
 import 'stats.dart';
 import 'stats_dialog.dart';
@@ -16,6 +17,14 @@ import 'stats_dialog.dart';
 const appTitle = "Egyptian Mouse Pounce";
 const appVersion = "1.5.0";
 const appLegalese = "© 2020-2026 Brian Nenninger";
+
+// Bundled card images. The first set is the default.
+const cardImageSets = [
+  CardImageSet("default", "Default", .assets, "assets/cards/default", 521.0 / 726),
+  CardImageSet("original", "Original", .assets, "assets/cards/original", 500.0 / 726),
+  CardImageSet("large", "Large text", .assets, "assets/cards/large", 500.0 / 700),
+  CardImageSet("large_four_color", "Large 4 color", .assets, "assets/cards/large_four_color", 500.0 / 700),
+];
 
 void main() {
   runApp(MyApp());
@@ -54,8 +63,6 @@ enum AnimationMode {
   pile_to_winner,
   illegal_slap,
 }
-
-const cardAspectRatio = 521.0 / 726;
 
 const illegalSlapAnimationDuration = Duration(milliseconds: 600);
 const moodDuration = Duration(milliseconds: 5000);
@@ -118,6 +125,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   List<AIMood> aiMoods = [AIMood.none, AIMood.none];
   AISlapSpeed aiSlapSpeed = AISlapSpeed.medium;
   final numCatImages = 4;
+  final cardImageSettings = CardImageSettings(builtInSets: cardImageSets, prefsKey: 'card_image_set');
   SoundEffectPlayer soundPlayer = SoundEffectPlayer();
 
   @override void initState() {
@@ -127,11 +135,13 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     catImageNumbers = _randomCatImageNumbers();
     penaltyCard = null;
     soundPlayer.init();
+    cardImageSettings.addListener(_cardImageSettingsChanged);
     _readPreferencesAndStartGame();
   }
 
   @override void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    cardImageSettings.dispose();
     statsSaveTimer?.cancel();
     _saveStatsIfNeeded();
     super.dispose();
@@ -185,6 +195,8 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     game.rules.badSlapPenalty = BadSlapPenaltyType.values.firstWhere(
         (s) => s.toString() == penaltyStr, orElse: () => BadSlapPenaltyType.none);
 
+    await cardImageSettings.load(preferences);
+
     _scheduleAiPlayIfNeeded();
 
     runAnimationTimingTestIfNeeded();
@@ -196,14 +208,17 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     return [c1 + 1, c2 + 1];
   }
 
-  String _imagePathForCard(final PlayingCard card) {
-    return 'assets/cards/${card.asciiString()}.webp';
+  CardImageSet get cardImageSet => cardImageSettings.selectedSet;
+
+  void _cardImageSettingsChanged() {
+    setState(() {});
+    _preloadCardImages();
   }
 
   void _preloadCardImages() {
     for (Rank r in Rank.values) {
       for (Suit s in Suit.values) {
-        precacheImage(AssetImage(_imagePathForCard(PlayingCard(r, s))), context);
+        precacheImage(cardImageSet.imageProvider(PlayingCard(r, s).asciiString()), context);
       }
     }
   }
@@ -561,6 +576,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       double width = constraints.maxWidth;
       double height = constraints.maxHeight;
       double viewAspectRatio = width / height;
+      final cardAspectRatio = cardImageSet.aspectRatio;
 
       final cardRect = (() {
         if (viewAspectRatio > cardAspectRatio) {
@@ -576,7 +592,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         }
       })();
 
-      final cornerRadius = cardRect.width * 0.04;
+      final cornerRadius = cardRect.width * 0.05;
 
       // For some reason Stack doesn't work as a child of Positioned.
       return Stack(children: [
@@ -589,10 +605,14 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
               blurRadius: cardRect.width * 0.02,
             )],
           ),
-          child: Image(
-            image: AssetImage(_imagePathForCard(card)),
-            fit: BoxFit.contain,
-            alignment: Alignment.center,
+          // Some card image sets are plain rectangles, so clip to the rounded rect.
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(cornerRadius),
+            child: Image(
+              image: cardImageSet.imageProvider(card.asciiString()),
+              fit: BoxFit.contain,
+              alignment: Alignment.center,
+            ),
           ),
         )),
         Positioned.fromRect(
@@ -1149,6 +1169,11 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                       onChanged: (bool? checked) {
                         setSoundEnabled(checked == true);
                       },
+                    ),
+                    CardImageSetPreference(
+                      settings: cardImageSettings,
+                      labelStyle: TextStyle(fontSize: baseFontSize * 0.8),
+                      cardHeight: 100,
                     ),
 
                     makeAiSpeedRow(),
