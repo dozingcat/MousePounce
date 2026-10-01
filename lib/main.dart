@@ -1155,7 +1155,8 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                 thumbVisibility: true,
                 child: SingleChildScrollView(
                 primary: true,
-                child: Container(
+                // Material rather than Container so that ListTiles can draw their ink effects.
+                child: Material(
                   color: dialogTableBackgroundColor,
                   child: Column(children: [
                     CheckboxListTile(
