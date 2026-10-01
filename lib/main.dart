@@ -600,10 +600,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           rect: cardRect,
           child: DecoratedBox(decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(cornerRadius),
-            boxShadow: [BoxShadow(
-              color: const Color(0x66000000),
-              blurRadius: cardRect.width * 0.02,
-            )],
           ),
           // Some card image sets are plain rectangles, so clip to the rounded rect.
           child: ClipRRect(
@@ -847,7 +843,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _paddingAll(10, Text(
+                _paddingAll(16, Text(
                     'Egyptian Mouse Pounce',
                     style: TextStyle(
                       fontSize: min(minDim / 18, 40),
@@ -1140,7 +1136,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           );
     };
 
-    final dialogWidth = 0.8 * minDim;
+    final dialogWidth = 0.9 * minDim;
     final dialogPadding = (displaySize.width - dialogWidth) / 2;
     return Container(
       width: double.infinity,
@@ -1159,7 +1155,8 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                 thumbVisibility: true,
                 child: SingleChildScrollView(
                 primary: true,
-                child: Container(
+                // Material rather than Container so that ListTiles can draw their ink effects.
+                child: Material(
                   color: dialogTableBackgroundColor,
                   child: Column(children: [
                     CheckboxListTile(
@@ -1172,7 +1169,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                     ),
                     CardImageSetPreference(
                       settings: cardImageSettings,
-                      labelStyle: TextStyle(fontSize: baseFontSize * 0.8),
+                      labelStyle: TextStyle(fontSize: baseFontSize),
                       cardHeight: 100,
                     ),
 
