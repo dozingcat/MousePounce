@@ -15,7 +15,7 @@ import 'stats.dart';
 import 'stats_dialog.dart';
 
 const appTitle = "Egyptian Mouse Pounce";
-const appVersion = "1.5.0";
+const appVersion = "1.6.0";
 const appLegalese = "© 2020-2026 Brian Nenninger";
 
 // Bundled card images. The first set is the default.
@@ -616,7 +616,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           child: Container(decoration: BoxDecoration(
             border: Border.all(
               color: const Color.fromRGBO(64, 64, 64, 0.25),
-              width: 0,
+              width: 1,
             ),
             borderRadius: BorderRadius.circular(cornerRadius),
           )),
