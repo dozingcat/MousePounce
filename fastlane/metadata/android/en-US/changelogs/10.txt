@@ -1,0 +1,2 @@
+- Added multiple card image sets and ability to upload custom images.
+- Removed card drop shadows to improve performance.
